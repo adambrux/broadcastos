@@ -8,19 +8,55 @@ export const listenerData = [
   { day: "Sun", listeners: 142 },
 ] as const
 
+export const currentUser = {
+  name: "Adam Brooks",
+  firstName: "Adam",
+  initials: "AB",
+  role: "Presenter & Producer",
+  station: "Premier Gospel",
+} as const
+
+export const dashboardData = {
+  eyebrow: "Premier Gospel command centre",
+  greeting: "Good morning, Adam",
+  introduction: "Your shows, listeners and production priorities — all in one calm place.",
+  nextShowSlug: "sundays-with-adam",
+  nextShowLabel: "Next flagship broadcast",
+  nextShowStatus: "Build in progress",
+  nextShowCountdown: "Sunday · 09:00",
+  listenerSummary: {
+    label: "Listeners across your shows",
+    value: "83.6K",
+    change: "8.6%",
+    comparison: "vs last week",
+  },
+  quickActions: [
+    { label: "Build Sunday Show", href: "/producer", kind: "build" },
+    { label: "Open Broadcast Mode", href: "/broadcast", kind: "broadcast" },
+    { label: "Process Weekly Brief", href: "/assistant", kind: "brief" },
+    { label: "Add Listener Interaction", href: "/listeners", kind: "listener" },
+    { label: "Review Last Show", href: "/review", kind: "review" },
+  ],
+  nextShowActions: [
+    { label: "Build running order", href: "/producer", kind: "rundown" },
+    { label: "Open live mode", href: "/broadcast", kind: "headphones" },
+    { label: "Congregation queue", href: "/listeners/congregation", kind: "messages" },
+    { label: "Show profile", href: "/shows/sundays-with-adam", kind: "profile" },
+  ],
+  footer: "BroadcastOS mock data · Premier Gospel workspace",
+} as const
+
 export const schedule = [
-  { time: "07:00–10:00", show: "The Morning Edit", producer: "Alex Parker", initials: "AP", status: "On air in 24 min" },
-  { time: "10:00–12:00", show: "City Voice", producer: "Jamie West", initials: "JW", status: "Upcoming" },
-  { time: "12:00–14:00", show: "The Midday Mix", producer: "Sam Carter", initials: "SC", status: "Upcoming" },
-  { time: "14:00–16:00", show: "Drive Time", producer: "Kai Bennett", initials: "KB", status: "Upcoming" },
-  { time: "16:00–18:00", show: "The Afternoon Flow", producer: "Leslie Park", initials: "LP", status: "Upcoming" },
+  { slug: "sundays-with-adam", time: "Sunday · 09:00–12:00", show: "Sundays with Adam", producer: "Adam Brooks", initials: "AB", status: "Build in progress" },
+  { slug: "afternoons-with-adam", time: "Weekdays · 13:00–16:00", show: "Afternoons with Adam", producer: "Adam Brooks", initials: "AB", status: "Live-ready" },
+  { slug: "saturday-breakfast", time: "Saturday · 07:00–10:00", show: "Saturday Breakfast", producer: "Adam Brooks", initials: "AB", status: "Ready" },
 ] as const
 
 export const reviewTasks = [
-  { title: "Morning Edit · 4 July", meta: "Air check · 2h 58m", due: "Due today", kind: "audio" },
-  { title: "Listener call: 555-0198", meta: "Voicemail · 1:42", due: "Due today", kind: "call" },
-  { title: "Guest segment: Dr. Lena Ortiz", meta: "Interview · 18:36", due: "Tomorrow", kind: "audio" },
-  { title: "Ad spot: Local Roots Market", meta: "Copy review", due: "8 July", kind: "copy" },
+  { title: "Sundays with Adam · aircheck", meta: "Show review · 2h 58m", due: "Due today", kind: "audio" },
+  { title: "Sunday Show Congregation queue", meta: "4 new regular listeners", due: "Due today", kind: "call" },
+  { title: "Faith and Finance episode 12", meta: "Podcast edit · 12:10", due: "Tomorrow", kind: "audio" },
+  { title: "Premier Marketplace P2 read", meta: "Weekly brief · copy review", due: "Before Sunday", kind: "copy" },
 ] as const
 
 export const shows = [
@@ -456,8 +492,8 @@ export const showProfiles: Record<string, ShowProfile> = {
 }
 
 export const stationHealth = [
-  { label: "Stream", detail: "Main studio", value: "Live" },
-  { label: "Automation", detail: "Program playback", value: "OK" },
-  { label: "Storage", detail: "1.2 TB of 2 TB", value: "62%" },
-  { label: "Listeners now", detail: "Peak this hour 3,105", value: "2,342" },
+  { label: "Premier Gospel stream", detail: "Main station feed", value: "Live", kind: "stream" },
+  { label: "Zetta automation", detail: "Sunday log connected", value: "Ready", kind: "automation" },
+  { label: "Sunday Show assets", detail: "5 of 6 production items", value: "83%", kind: "assets" },
+  { label: "Listener inbox", detail: "WhatsApp and voice notes", value: "27 new", kind: "listeners" },
 ] as const
