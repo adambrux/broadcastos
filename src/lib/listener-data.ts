@@ -17,6 +17,15 @@ export type ListenerProfile = {
   newListener: boolean
   pronunciation: string
   familyGroup?: string
+  dateAdded?: string
+  shows?: readonly string[]
+  notes?: string
+  sensitive?: boolean
+  consentVoiceNote?: boolean
+  doNotMention?: boolean
+  includeInRollCall?: boolean
+  newThisWeek?: boolean
+  duplicateWarning?: string
 }
 
 export const listenerProfiles: readonly ListenerProfile[] = [
@@ -43,6 +52,12 @@ export const listenerProfiles: readonly ListenerProfile[] = [
     newListener: false,
     pronunciation: "MAR-sha WILL-yums",
     familyGroup: "Williams family",
+    dateAdded: "21 June 2026",
+    shows: ["Sundays with Adam", "Afternoons with Adam"],
+    notes: "Always acknowledge the wider Williams family when they check in together.",
+    consentVoiceNote: true,
+    includeInRollCall: true,
+    newThisWeek: true,
   },
   {
     id: "daniel-k",
@@ -66,6 +81,12 @@ export const listenerProfiles: readonly ListenerProfile[] = [
     inCongregation: true,
     newListener: false,
     pronunciation: "DAN-yul KWAH-teng",
+    dateAdded: "21 June 2026",
+    shows: ["Sundays with Adam"],
+    notes: "Starting university in September; check in again before freshers week.",
+    sensitive: true,
+    consentVoiceNote: true,
+    includeInRollCall: true,
   },
   {
     id: "okafor-family",
@@ -90,6 +111,11 @@ export const listenerProfiles: readonly ListenerProfile[] = [
     newListener: false,
     pronunciation: "oh-KAH-for",
     familyGroup: "Okafor family",
+    dateAdded: "9 November 2025",
+    shows: ["Sundays with Adam", "Saturday Breakfast"],
+    notes: "Keep the family together in the spoken Roll Call.",
+    consentVoiceNote: true,
+    includeInRollCall: true,
   },
   {
     id: "sister-angela",
@@ -113,6 +139,11 @@ export const listenerProfiles: readonly ListenerProfile[] = [
     inCongregation: true,
     newListener: false,
     pronunciation: "AN-juh-lah MOR-iss",
+    dateAdded: "21 April 2024",
+    shows: ["Sundays with Adam"],
+    notes: "Preserve the title Sister when mentioning Angela on air.",
+    doNotMention: true,
+    includeInRollCall: false,
   },
   {
     id: "naomi-b",
@@ -135,11 +166,74 @@ export const listenerProfiles: readonly ListenerProfile[] = [
     inCongregation: false,
     newListener: true,
     pronunciation: "NAY-oh-mee BOH-teng",
+    shows: ["Sundays with Adam"],
+    notes: "Two interactions so far. Review for Congregation after one more Sunday.",
+    consentVoiceNote: false,
   },
 ]
 
 export const newListenerQueue = [
-  { id: "naomi-b", name: "Naomi Boateng", location: "Reading", source: "2 interactions · voice note", pronunciation: "NAY-oh-mee BOH-teng", duplicate: "" },
-  { id: "james-p", name: "James Peters", location: "Enfield", source: "3 interactions · WhatsApp", pronunciation: "JAYMZ PEE-turz", duplicate: "" },
-  { id: "marcia-w-new", name: "Marcia W.", location: "Croydon", source: "1 interaction · text", pronunciation: "MAR-sha", duplicate: "Possible duplicate: Marcia Williams · Croydon" },
+  {
+    id: "naomi-b",
+    name: "Naomi Boateng",
+    location: "Reading",
+    source: "2 interactions · voice note",
+    pronunciation: "NAY-oh-mee BOH-teng",
+    duplicate: "",
+    firstInteraction: "28 June 2026",
+    interactionType: "Voice note",
+    message: "The Sunday School lesson helped me settle after moving house.",
+    show: "Sundays with Adam",
+    consentNeeded: true,
+  },
+  {
+    id: "james-p",
+    name: "James Peters",
+    location: "Enfield",
+    source: "3 interactions · WhatsApp",
+    pronunciation: "JAYMZ PEE-turz",
+    duplicate: "",
+    firstInteraction: "14 June 2026",
+    interactionType: "WhatsApp",
+    message: "Please add my family to the Roll Call—we listen on the school run home from church.",
+    show: "Sundays with Adam",
+    consentNeeded: false,
+  },
+  {
+    id: "marcia-w-new",
+    name: "Marcia W.",
+    location: "Croydon",
+    source: "1 interaction · text",
+    pronunciation: "MAR-sha",
+    duplicate: "Possible duplicate: Marcia Williams · Croydon",
+    firstInteraction: "5 July 2026",
+    interactionType: "Text",
+    message: "Morning Adam, checking in from Croydon and requesting Goodness of God.",
+    show: "Sundays with Adam",
+    consentNeeded: false,
+  },
+  {
+    id: "ruth-a",
+    name: "Ruth Adebayo",
+    location: "Enfield",
+    source: "1 interaction · prayer request",
+    pronunciation: "ROOTH ah-deh-BYE-oh",
+    duplicate: "",
+    firstInteraction: "5 July 2026",
+    interactionType: "Prayer request",
+    message: "Please pray for courage while we wait for an important family decision.",
+    show: "Sundays with Adam",
+    consentNeeded: false,
+  },
+] as const
+
+export const listenerMetrics = [
+  { label: "Total listeners", value: "1,486", note: "Known across all shows", kind: "listeners" },
+  { label: "Congregation members", value: "1,284", note: "Permanent roll call", kind: "congregation" },
+  { label: "New listener queue", value: "4", note: "2 ready to review", kind: "new" },
+  { label: "Birthdays this week", value: "6", note: "Next: Aunty Pauline", kind: "birthday" },
+  { label: "Prayer requests", value: "18", note: "5 marked sensitive", kind: "prayer" },
+  { label: "Testimonies", value: "9", note: "3 ready for air", kind: "testimony" },
+  { label: "Song requests", value: "24", note: "This Sunday", kind: "songs" },
+  { label: "Most active", value: "Marcia", note: "12 interactions this month", kind: "active" },
 ] as const
