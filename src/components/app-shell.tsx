@@ -47,15 +47,15 @@ import { cn } from "@/lib/utils"
 import { currentUser } from "@/lib/mock-data"
 
 const navigation = [
-  { label: "Dashboard", href: "/dashboard", icon: Gauge },
+  { label: "Today", href: "/today", icon: Gauge },
   { label: "Shows", href: "/shows", icon: CalendarDays },
-  { label: "Producer", href: "/producer", icon: SlidersHorizontal },
+  { label: "Producer Desk", href: "/producer", icon: SlidersHorizontal },
   { label: "Content Library", href: "/content", icon: LibraryBig },
   { label: "Intelligence", href: "/assistant", icon: WandSparkles },
-  { label: "Broadcast", href: "/broadcast", icon: Radio },
-  { label: "Listeners", href: "/listeners", icon: Users },
-  { label: "Station", href: "/station", icon: BarChart3 },
-  { label: "Review", href: "/review", icon: CheckSquare },
+  { label: "On Air", href: "/broadcast", icon: Radio },
+  { label: "Audience", href: "/listeners", icon: Users },
+  { label: "Station HQ", href: "/station", icon: BarChart3 },
+  { label: "Aircheck", href: "/review", icon: CheckSquare },
   { label: "Settings", href: "/settings", icon: Settings },
 ] as const
 
