@@ -32,6 +32,7 @@ AI must enhance an explicit content object and workflow. It must not silently in
 | Producer Desk | `/producer` | Build and prepare a dated show |
 | Content Library | `/content` | Master scripts, episodes, imported content and provenance |
 | Newsroom | `/newsroom` | Source library, story scoring, radio prep and show assignment |
+| Broadcast Brain | `/brain` | Recurring feature DNA, prompts, history, analytics and relationships |
 | Intelligence | `/assistant` | Future assisted research and production workflows |
 | On Air | `/broadcast` | Distraction-free presenter view |
 | Audience | `/listeners` | Listener relationships, interactions and Congregation records |
@@ -57,6 +58,7 @@ Legacy route `/dashboard` redirects to `/today`. Existing production routes rema
 - Sunday School archive and manual paste workflow
 - Import Centre with editable import cards
 - Newsroom source library, story inbox, preparation and assignment workflows
+- Broadcast Brain Feature Library and reusable feature DNA workflows
 - Source labels and shared content structures
 
 ### Manual for now
@@ -99,9 +101,9 @@ Legacy route `/dashboard` redirects to `/today`. Existing production routes rema
 
 `/today` becomes the primary landing page and daily Executive Producer desk. `/dashboard` remains as a redirect so existing links do not break.
 
-### 2026-07-05 — Broadcast Brain remains paused
+### 2026-07-05 — Broadcast Brain resumes after content architecture
 
-Reusable feature intelligence will not be expanded until real content architecture and provenance are established.
+Reusable feature intelligence is organised as versioned templates after the Content Library established content objects and provenance. Future AI actions remain disconnected.
 
 ### 2026-07-05 — Content Library is the source layer
 

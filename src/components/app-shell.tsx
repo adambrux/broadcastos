@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Bell,
+  BrainCircuit,
   CalendarDays,
   CheckSquare,
   ChevronDown,
@@ -53,6 +54,7 @@ const navigation = [
   { label: "Producer Desk", href: "/producer", icon: SlidersHorizontal },
   { label: "Content Library", href: "/content", icon: LibraryBig },
   { label: "Newsroom", href: "/newsroom", icon: Newspaper },
+  { label: "Broadcast Brain", href: "/brain", icon: BrainCircuit },
   { label: "Intelligence", href: "/assistant", icon: WandSparkles },
   { label: "On Air", href: "/broadcast", icon: Radio },
   { label: "Audience", href: "/listeners", icon: Users },
