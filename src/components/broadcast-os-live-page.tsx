@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import {
   ArrowLeft,
@@ -115,7 +116,7 @@ export function BroadcastOSLivePage() {
 
   return (
     <div className="fixed inset-0 z-[60] overflow-auto bg-[#08090d] text-white">
-      <header className="border-b border-white/10 bg-[#08090d]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#08090d]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-6 px-5 py-3 sm:px-8">
           <div className="flex min-w-0 items-center gap-4">
             <span className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-white text-ink">
@@ -130,9 +131,23 @@ export function BroadcastOSLivePage() {
               <p className="mt-0.5 truncate text-xs text-white/45">Premier Gospel · Adam Brooks</p>
             </div>
           </div>
-          <div className="text-right">
-            <p className="font-mono text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">{clock}</p>
-            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-white/40">Sunday 6 July</p>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="h-9 rounded-xl border-white/15 bg-white/[0.06] px-3 text-white hover:bg-white/10 hover:text-white"
+            >
+              <Link href="/dashboard" aria-label="Exit Broadcast Mode and return to dashboard">
+                <ArrowLeft />
+                <span className="sm:hidden">Exit</span>
+                <span className="hidden sm:inline">Exit Broadcast Mode</span>
+              </Link>
+            </Button>
+            <div className="text-right">
+              <p className="font-mono text-xl font-semibold tracking-[-0.04em] sm:text-3xl">{clock}</p>
+              <p className="mt-0.5 hidden text-[10px] font-medium uppercase tracking-[0.14em] text-white/40 sm:block">Sunday 5 July</p>
+            </div>
           </div>
         </div>
       </header>

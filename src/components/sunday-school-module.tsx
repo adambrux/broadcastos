@@ -29,6 +29,7 @@ export function SundaySchoolModule({ module }: { module: SundaySchool }) {
               <BookOpen className="size-6 text-brand-magenta" />
               Sunday School
             </h2>
+            <p className="mt-2 text-xs font-medium text-white/80">Episode · {module.podcastTitle}</p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">A complete three-part teaching package with scripts, audience prompts, sound direction and podcast metadata.</p>
           </div>
           <div className="flex gap-2 text-xs text-white/65">
