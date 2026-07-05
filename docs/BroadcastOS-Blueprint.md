@@ -31,6 +31,7 @@ AI must enhance an explicit content object and workflow. It must not silently in
 | Shows | `/shows` | Show profiles, DNA, structures and recurring features |
 | Producer Desk | `/producer` | Build and prepare a dated show |
 | Content Library | `/content` | Master scripts, episodes, imported content and provenance |
+| Newsroom | `/newsroom` | Source library, story scoring, radio prep and show assignment |
 | Intelligence | `/assistant` | Future assisted research and production workflows |
 | On Air | `/broadcast` | Distraction-free presenter view |
 | Audience | `/listeners` | Listener relationships, interactions and Congregation records |
@@ -55,6 +56,7 @@ Legacy route `/dashboard` redirects to `/today`. Existing production routes rema
 - Master Roll Call Library
 - Sunday School archive and manual paste workflow
 - Import Centre with editable import cards
+- Newsroom source library, story inbox, preparation and assignment workflows
 - Source labels and shared content structures
 
 ### Manual for now

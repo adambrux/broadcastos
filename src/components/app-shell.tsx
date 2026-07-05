@@ -14,6 +14,7 @@ import {
   LibraryBig,
   Menu,
   Mic2,
+  Newspaper,
   Radio,
   Search,
   Settings,
@@ -51,6 +52,7 @@ const navigation = [
   { label: "Shows", href: "/shows", icon: CalendarDays },
   { label: "Producer Desk", href: "/producer", icon: SlidersHorizontal },
   { label: "Content Library", href: "/content", icon: LibraryBig },
+  { label: "Newsroom", href: "/newsroom", icon: Newspaper },
   { label: "Intelligence", href: "/assistant", icon: WandSparkles },
   { label: "On Air", href: "/broadcast", icon: Radio },
   { label: "Audience", href: "/listeners", icon: Users },
@@ -103,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="px-2">
           <Brand />
         </div>
-        <div className="mt-9 flex-1">
+        <div className="mt-9 min-h-0 flex-1 overflow-y-auto pr-1">
           <NavigationLinks />
         </div>
         <DropdownMenu>
