@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import {
   AlertTriangle,
@@ -14,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { rollCallMembers, rollCallQueue } from "@/lib/content-library"
 
 type CongregationMember = {
   name: string
@@ -23,20 +25,20 @@ type CongregationMember = {
   newThisWeek?: boolean
 }
 
-const permanentMembers: CongregationMember[] = [
-  { name: "Michelle Grant", location: "Croydon", pronunciation: "mih-SHELL", family: "Grant family" },
-  { name: "The Okafor family", location: "Birmingham", pronunciation: "oh-KAH-for", family: "Family of five", newThisWeek: true },
-  { name: "Sister Angela", location: "Luton", family: "Listening with Mum", newThisWeek: true },
-  { name: "Daniel K.", location: "Leeds", pronunciation: "DAN-yul", newThisWeek: true },
-  { name: "Pastor Samuel and Grace", location: "Peckham", family: "Adebayo family" },
-  { name: "Ruth Mensah", location: "Enfield", pronunciation: "MEN-sah" },
-]
+const permanentMembers: CongregationMember[] = rollCallMembers.map((member) => ({
+  name: `${member.title ? `${member.title} ` : ""}${member.name}`,
+  location: member.location,
+  pronunciation: member.pronunciation,
+  family: member.familyGroup ?? member.locationNote,
+  newThisWeek: member.newAddition,
+}))
 
-const initialQueue: CongregationMember[] = [
-  { name: "Marcia Williams", location: "Croydon", pronunciation: "MAR-see-ah" },
-  { name: "The Ajayi family", location: "Wolverhampton", pronunciation: "ah-JAH-yee", family: "Parents + three children" },
-  { name: "Daniel K.", location: "Leeds", pronunciation: "DAN-yul" },
-]
+const initialQueue: CongregationMember[] = rollCallQueue.map((member) => ({
+  name: `${member.title ? `${member.title} ` : ""}${member.name}`,
+  location: member.location,
+  pronunciation: member.pronunciation,
+  family: member.familyGroup ?? member.locationNote,
+}))
 
 export function ProducerRollCallBuilder() {
   const [members, setMembers] = useState(permanentMembers)
@@ -77,7 +79,12 @@ export function ProducerRollCallBuilder() {
               </div>
               <p className="mt-3 max-w-xl text-xs leading-5 text-muted-foreground">Members remain in the Congregation every week. Tick the names Adam should read in this Sunday’s on-air Roll Call.</p>
             </div>
-            <Badge variant="outline" className="bg-white">{selected.length} selected</Badge>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="bg-white">{selected.length} selected</Badge>
+              <Button asChild size="sm" variant="outline" className="bg-white">
+                <Link href="/content/roll-call">Open master library</Link>
+              </Button>
+            </div>
           </div>
 
           <div className="mt-5 space-y-2">

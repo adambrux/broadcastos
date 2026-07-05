@@ -1,3 +1,5 @@
+import { sundaySchoolProductionKit } from "@/lib/content-library"
+
 export const listenerData = [
   { day: "Mon", listeners: 62 },
   { day: "Tue", listeners: 88 },
@@ -198,46 +200,7 @@ export const showProfiles: Record<string, ShowProfile> = {
         { name: "Sister Angela", location: "Luton", joined: "Voice note · last Sunday" },
       ],
     },
-    sundaySchool: {
-      forwardPromo: "Coming up after 10, Sunday School opens the lesson with one question: what does faithful courage look like before the breakthrough arrives? Keep listening, because your voice notes will become part of the class.",
-      parts: [
-        {
-          title: "Part 1 · Before the breakthrough",
-          duration: "04:30",
-          script: "Adam sets the scene: faith is often formed while the answer still feels far away. Introduce the central story, name the tension clearly, then invite the congregation to listen for the choice that changes everything.",
-        },
-        {
-          title: "Part 2 · The golden text",
-          duration: "05:00",
-          script: "Return with a short recap, reveal the golden text and unpack its meaning in everyday language. Move from scripture to home, work and family life without losing the warmth of a shared Sunday conversation.",
-        },
-        {
-          title: "Part 3 · Put it into practice",
-          duration: "04:45",
-          script: "Resolve the story with a practical invitation for the week. Give listeners one action, one sentence to remember and a clear route back into the audience question before the final music bed.",
-        },
-      ],
-      goldenText: "Let us hold unswervingly to the hope we profess, for he who promised is faithful. — Hebrews 10:23",
-      audienceQuestionBefore: "Where in your life are you being asked to trust before you can see the outcome?",
-      audienceQuestionAfter: "What one faithful action will you take this week, even if the answer has not arrived yet?",
-      soundDesignNotes: [
-        "Open with a soft page-turn and distant Sunday room tone; avoid theatrical church bells.",
-        "Use one restrained transition motif between parts so the package feels continuous.",
-        "Leave a clean two-second breath after the golden text before Adam returns.",
-      ],
-      musicBeds: [
-        "Warm piano and soft pad, 72–76 BPM, no lead vocal.",
-        "Light gospel organ texture for the golden text reveal.",
-        "Hopeful acoustic bed for the practical application and audience question.",
-      ],
-      characterVoiceNotes: [
-        { character: "Narrator", direction: "Warm, grounded and conversational; never read like a formal lesson." },
-        { character: "Young listener", direction: "Curious and natural, with a genuine question rather than a scripted performance." },
-        { character: "Elder voice", direction: "Gentle authority, lived experience and a short reflective pace." },
-      ],
-      podcastTitle: "Sunday School: Faith Before the Breakthrough",
-      podcastDescription: "Adam Brooks explores how faithful courage grows before circumstances change, with the golden text, listener questions and one practical action for the week ahead.",
-    },
+    sundaySchool: sundaySchoolProductionKit,
   },
   "afternoons-with-adam": {
     slug: "afternoons-with-adam",

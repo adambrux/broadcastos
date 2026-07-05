@@ -1,3 +1,8 @@
+import {
+  contentWeeklyBriefs,
+  weeklyBriefExtractionItems,
+} from "@/lib/content-library"
+
 export type StationShow = "Sundays with Adam" | "Afternoons with Adam" | "Saturday Breakfast"
 
 export const stationMetrics = [
@@ -11,27 +16,9 @@ export const stationMetrics = [
   { label: "Unassigned items", value: "6", note: "Needs placement", kind: "unassigned" },
 ] as const
 
-export const weeklyBriefs = [
-  { id: "brief-06-jul", title: "Premier Gospel Weekly Briefing", week: "6–12 July 2026", received: "3 July · 16:42", source: "Word document", status: "New" },
-  { id: "brief-29-jun", title: "Premier Gospel Weekly Briefing", week: "29 June–5 July 2026", received: "27 June · 15:18", source: "Email text", status: "Processed" },
-  { id: "brief-22-jun", title: "Premier Gospel Weekly Briefing", week: "22–28 June 2026", received: "20 June · 17:04", source: "PDF", status: "Needs review" },
-  { id: "brief-15-jun", title: "Premier Gospel Weekly Briefing", week: "15–21 June 2026", received: "13 June · 16:25", source: "Word document", status: "Archived" },
-] as const
+export const weeklyBriefs = contentWeeklyBriefs
 
-export const extractedBriefItems = [
-  { id: "prayer-andy", category: "Prayer point", title: "Prayer for Andy Peck", body: "Pray for Andy following his cancer diagnosis, with sensitivity and without sharing details beyond the approved wording.", priority: "High", assigned: "Sundays with Adam" },
-  { id: "campaign-judas", category: "Station campaign", title: "Guess The Judas", body: "Invite listeners to watch and take part through the Premier Gospel YouTube channel.", priority: "High", assigned: "Afternoons with Adam" },
-  { id: "liner-ebook", category: "Liner", title: "Free e-book from Truth for Life", body: "Promote the free e-book clearly, using the approved title and destination from the station brief.", priority: "Medium", assigned: "Unassigned" },
-  { id: "presenter-listener", category: "Presenter reminder", title: "Speak to one listener", body: "Use direct, conversational language. Avoid radio speak and imagine one person listening.", priority: "High", assigned: "All shows" },
-  { id: "producer-experience", category: "Producer reminder", title: "Improve the listening experience", body: "Review pacing, clarity, content balance and joins so the programme feels intentional from start to finish.", priority: "Medium", assigned: "All shows" },
-  { id: "technical-burli", category: "Technical reminder", title: "Clear Burli folders", body: "Remove unnecessary files from Burli folders and keep shared production areas organised.", priority: "Medium", assigned: "Unassigned" },
-  { id: "event-uzoma", category: "Upcoming event", title: "Uzoma farewell", body: "Acknowledge Uzoma leaving after more than 16 years of service using the approved internal wording.", priority: "Medium", assigned: "Unassigned" },
-  { id: "appeal-thanks", category: "Appeal", title: "Premier Gospel appeal thanks", body: "Thank listeners warmly for supporting the Premier Gospel appeal. Do not introduce a new ask.", priority: "High", assigned: "Sundays with Adam" },
-  { id: "competition-judas", category: "Competition", title: "Guess The Judas response", body: "Use the YouTube liner and approved participation mechanics. Do not improvise entry details.", priority: "High", assigned: "Afternoons with Adam" },
-  { id: "marketplace-read", category: "Marketplace read", title: "Premier Christian Marketplace", body: "Use the current summer reading P2 copy and the supplied Marketplace bed.", priority: "Medium", assigned: "Saturday Breakfast" },
-  { id: "guest-lead", category: "Guest lead", title: "Radio staff working hours", body: "Follow up the staff working-hours email as a possible workplace conversation for a future programme.", priority: "Low", assigned: "Unassigned" },
-  { id: "compliance-checks", category: "Compliance note", title: "Time, station and name checks", body: "Give the time, station name and presenter name at least twice per hour; tease ahead naturally.", priority: "High", assigned: "All shows" },
-] as const
+export const extractedBriefItems = weeklyBriefExtractionItems
 
 export const stationLiners = [
   {

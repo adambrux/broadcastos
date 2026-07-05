@@ -1,3 +1,4 @@
+import Link from "next/link"
 import {
   AudioLines,
   BookOpen,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ShowProfile } from "@/lib/mock-data"
@@ -32,9 +34,12 @@ export function SundaySchoolModule({ module }: { module: SundaySchool }) {
             <p className="mt-2 text-xs font-medium text-white/80">Episode · {module.podcastTitle}</p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">A complete three-part teaching package with scripts, audience prompts, sound direction and podcast metadata.</p>
           </div>
-          <div className="flex gap-2 text-xs text-white/65">
+          <div className="flex flex-wrap gap-2 text-xs text-white/65">
             <span className="rounded-full bg-white/10 px-3 py-1.5">3 parts</span>
             <span className="rounded-full bg-white/10 px-3 py-1.5">~14 min</span>
+            <Button asChild size="sm" variant="outline" className="h-8 rounded-full border-white/15 bg-white/10 px-3 text-white hover:bg-white/15 hover:text-white">
+              <Link href="/content/sunday-school">Open source episode</Link>
+            </Button>
           </div>
         </div>
       </div>
