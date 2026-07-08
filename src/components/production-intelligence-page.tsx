@@ -30,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { LinkFramework } from "@/components/link-framework"
 import { cn } from "@/lib/utils"
 
 type ToolId =
@@ -383,6 +384,10 @@ export function ProductionIntelligencePage() {
                   Copy output
                 </Button>
               </div>
+
+              {(activeId === "script" || activeId === "links") && (
+                <LinkFramework compact className="mt-5" />
+              )}
 
               <div className="mt-5 grid gap-3 md:grid-cols-2">
                 {results[activeId].map((item) => (

@@ -26,6 +26,7 @@ import {
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { NowOnAirBanner } from "@/components/now-on-air-banner"
 import {
   Sheet,
   SheetContent,
@@ -339,6 +340,8 @@ export function BroadcastOSLivePage() {
       </header>
 
       <main className="mx-auto max-w-[1600px] px-5 pb-28 pt-4 sm:px-8">
+        <NowOnAirBanner dark className="mb-4" />
+
         {notice && (
           <div role="status" className="mb-3 flex items-center gap-2 rounded-xl border border-emerald-400/15 bg-emerald-400/10 px-4 py-2.5 text-xs text-emerald-300">
             <CheckCircle2 className="size-4" />{notice}

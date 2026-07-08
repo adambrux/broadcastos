@@ -5,6 +5,7 @@ export type FeatureReadiness = "Ready" | "Needs review" | "Draft"
 export type FeatureTemplate = {
   id: string
   name: string
+  linkFrameworkId: "broadcastos-link-framework"
   showsUsedOn: readonly BrainShow[]
   purpose: string
   mission: string
@@ -117,6 +118,7 @@ function createFeature(seed: FeatureSeed, show: BrainShow, index: number): Featu
   return {
     ...seed,
     id: toId(seed.name),
+    linkFrameworkId: "broadcastos-link-framework",
     showsUsedOn: [show],
     mission: `Make ${seed.name} a recognisable, repeatable part of ${show} while protecting the feature’s emotional purpose.`,
     idealPlacement: show === "Sundays with Adam" ? "Within the Sunday three-hour arc" : show === "Afternoons with Adam" ? "After a clean time and station reset" : "Within the relaxed weekend pace",
@@ -126,7 +128,7 @@ function createFeature(seed: FeatureSeed, show: BrainShow, index: number): Featu
     presenterGuidance: `Sound natural and present. Protect the ${seed.targetEmotion.toLowerCase()} at the centre of the feature; use the structure as support, not as a script to perform at the listener.`,
     producerGuidance: `Confirm the objective, assets, timing and exit before air. Keep ${seed.name} distinct from the links around it and preserve a clean next-item handover.`,
     productionWorkflow: ["Confirm this edition’s objective", "Collect and verify required assets", "Write or shape presenter guidance", "Set timing, CTA and exit", "Mark ready for broadcast"],
-    broadcastWorkflow: ["Reset time and station where needed", "Set the listener promise", "Deliver the core feature", "Invite the selected interaction", "Tease or transition cleanly"],
+    broadcastWorkflow: ["Context", "Recap", "The Moment", "Call To Action", "Tease Ahead"],
     interactionIdeas: [`Ask for one specific response connected to ${seed.name}`, "Use one voice note or named listener example", "Carry the best response into a later link"],
     suggestedCtas: ["WhatsApp Premier Gospel with your answer", "Send a short voice note", "Tell us where you are listening from"],
     variations: ["Short version for a tight clock", "Extended listener-led version", "Podcast or social follow-up"],

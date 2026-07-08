@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 
 import { ContentSourceBadge } from "@/components/content-source-badge"
+import { LinkFramework } from "@/components/link-framework"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -109,6 +110,8 @@ export function ContentLibraryPage() {
         ))}
       </section>
 
+      <LinkFramework compact />
+
       <section className="rounded-[26px] border bg-white p-5 shadow-sm sm:p-7">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -137,6 +140,11 @@ export function ContentLibraryPage() {
                 </div>
                 <h3 className="mt-3 font-semibold tracking-[-0.02em]">{item.title}</h3>
                 <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{item.excerpt}</p>
+                {item.linkFramework && (
+                  <div className="mt-3 rounded-2xl border border-brand-indigo/10 bg-brand-soft/25 p-3 text-xs text-brand-indigo">
+                    Stored as BroadcastOS Link Framework: Context · Recap · The Moment · Call To Action · Tease Ahead
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-5 md:justify-end">
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarClock className="size-3.5" />{item.updated}</span>

@@ -18,7 +18,6 @@ import {
   Newspaper,
   PartyPopper,
   Radio,
-  ShieldCheck,
   Sparkles,
   UsersRound,
   X,
@@ -27,6 +26,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ExecutiveProducerPanel } from "@/components/executive-producer-panel"
+import { NowOnAirBanner } from "@/components/now-on-air-banner"
 import { Progress } from "@/components/ui/progress"
 import {
   todayAudienceSignals,
@@ -152,48 +153,9 @@ export function TodayCommandCentre({ initialNow }: { initialNow: string }) {
         </div>
       </header>
 
-      <section className="grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
-        <Card className="overflow-hidden rounded-[26px] border-brand-indigo/10 bg-gradient-to-br from-white via-white to-brand-soft/55 shadow-card">
-          <CardContent className="p-6 sm:p-8">
-            <div className="flex flex-col gap-7 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-2xl">
-                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-indigo"><Sparkles className="size-3.5" />Executive Producer</div>
-                <p className="mt-5 text-xl font-medium leading-8 tracking-[-0.025em] sm:text-2xl sm:leading-9">
-                  Good {now.getHours() < 12 ? "morning" : now.getHours() < 18 ? "afternoon" : "evening"} Adam. I’ve processed this week’s Premier Gospel briefing. Afternoons with Adam is 78% ready. I found three potential Good News stories, one listener birthday, and two station reminders that still need placing.
-                </p>
-              </div>
-              <Badge className="w-fit bg-brand-soft text-brand-indigo"><ShieldCheck />High confidence</Badge>
-            </div>
-            <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                ["Prep remaining", "42 min", "Across five decisions"],
-                ["Confidence score", "86%", "Based on today’s mock data"],
-                ["Show readiness", "78%", "Strong shape, copy missing"],
-                ["Suggested next", "Choose story", "Good News Around the World"],
-              ].map(([label, value, note]) => (
-                <div key={label} className="rounded-2xl border border-white bg-white/80 p-4 shadow-sm">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">{label}</p>
-                  <p className="mt-2 text-lg font-semibold tracking-[-0.03em]">{value}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{note}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <NowOnAirBanner />
 
-        <Card className="rounded-[26px] bg-ink text-white shadow-card">
-          <CardContent className="flex h-full flex-col justify-between p-6 sm:p-7">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">My recommendation</p>
-              <h2 className="mt-4 text-2xl font-semibold tracking-[-0.04em]">Choose the lead story next.</h2>
-              <p className="mt-3 text-sm leading-6 text-white/55">It unlocks the Hour 1 tease, audience question and producer wording in one move.</p>
-            </div>
-            <Button asChild className="mt-8 h-11 w-full rounded-xl bg-white text-ink hover:bg-white/90">
-              <Link href="#today-stories"><Newspaper />Review story shortlist</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
+      <ExecutiveProducerPanel greeting={greetingForHour(now.getHours())} />
 
       <section className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]">
         <Card className="rounded-[26px] shadow-sm">

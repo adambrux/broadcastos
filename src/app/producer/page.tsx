@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { ProducerOSPage } from "@/components/producer-os-page"
+import { UsableProducerDesk } from "@/components/usable-producer-desk"
 
-export const metadata: Metadata = { title: "ProducerOS" }
-export default function ProducerPage() { return <ProducerOSPage /> }
+export const metadata: Metadata = { title: "Producer Desk" }
+export default function ProducerPage() { return <UsableProducerDesk /> }

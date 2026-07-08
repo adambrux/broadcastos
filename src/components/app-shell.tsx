@@ -4,24 +4,16 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  BarChart3,
   Bell,
-  BrainCircuit,
-  CalendarDays,
-  CheckSquare,
   ChevronDown,
   Gauge,
   Headphones,
-  LibraryBig,
   Menu,
   Mic2,
   Newspaper,
   Radio,
   Search,
-  Settings,
   SlidersHorizontal,
-  Users,
-  WandSparkles,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -50,17 +42,9 @@ import { currentUser } from "@/lib/mock-data"
 
 const navigation = [
   { label: "Today", href: "/today", icon: Gauge },
-  { label: "Shows", href: "/shows", icon: CalendarDays },
   { label: "Producer Desk", href: "/producer", icon: SlidersHorizontal },
-  { label: "Content Library", href: "/content", icon: LibraryBig },
   { label: "Newsroom", href: "/newsroom", icon: Newspaper },
-  { label: "Broadcast Brain", href: "/brain", icon: BrainCircuit },
-  { label: "Intelligence", href: "/assistant", icon: WandSparkles },
   { label: "On Air", href: "/broadcast", icon: Radio },
-  { label: "Audience", href: "/listeners", icon: Users },
-  { label: "Station HQ", href: "/station", icon: BarChart3 },
-  { label: "Aircheck", href: "/review", icon: CheckSquare },
-  { label: "Settings", href: "/settings", icon: Settings },
 ] as const
 
 function NavigationLinks({ mobile = false }: { mobile?: boolean }) {
@@ -91,7 +75,7 @@ function NavigationLinks({ mobile = false }: { mobile?: boolean }) {
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/dashboard" className={cn("inline-flex flex-col items-start", compact ? "gap-1" : "gap-2")} aria-label="Premier BroadcastOS home">
+    <Link href="/today" className={cn("inline-flex flex-col items-start", compact ? "gap-1" : "gap-2")} aria-label="Premier BroadcastOS home">
       <Image src="/premier-logo.svg" alt="Premier" width={126} height={59} priority className={cn("h-auto", compact ? "w-[82px]" : "w-[112px]")} />
       <span className={cn("pl-1 font-semibold tracking-[-0.015em] text-foreground", compact ? "text-[12px]" : "text-[15px]")}>BroadcastOS</span>
     </Link>

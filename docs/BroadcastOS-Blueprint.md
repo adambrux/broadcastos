@@ -10,7 +10,15 @@ The product should feel like an experienced Executive Producer: clear about what
 
 BroadcastOS is organised around durable broadcast objects rather than loose notes.
 
+- The usable studio shell stays deliberately small: Today, Producer Desk, Newsroom and On Air.
+- Working mode is location-aware: In-studio companion keeps only planning, links and On Air; Remote production adds manually pasted listener messages.
+- Producer Desk is local-first: a dated running order can start blank or from a show template and is saved in the browser.
+- Every substantive link follows the Context First rule: Show ID, Feature ID, context, recap, progress, one CTA and tease ahead.
+- On Air reads the exact same local workspace rather than presenting separate mock content.
+- Listener messages enter the workspace through explicit manual paste.
+- Zetta remains the authority for live songs, timing and playout until a real integration exists.
 - Shows define schedule, tone, mission and recurring structure.
+- Schedule maps the manually curated Premier Gospel week into a shared UK-time on-air state.
 - Content Library stores the reusable scripts and source material used by shows.
 - Producer Desk assembles those objects into a dated running order.
 - On Air reduces the running order to the next useful presenter action.
@@ -23,12 +31,32 @@ Content provenance is always visible. Current labels are `Manual for now`, `Impo
 
 AI must enhance an explicit content object and workflow. It must not silently invent a source, claim a connection exists or replace editorial judgement.
 
+## Global Link Writing Standard
+
+BroadcastOS writes every presenter link using the BroadcastOS Link Framework:
+
+Context → Recap → The Moment → Call To Action → Tease Ahead
+
+Every listener joins mid-story. Context first, always.
+
+Each link must answer:
+
+- Context: “Where am I?”
+- Recap: “What are we doing?”
+- The Moment: “Why is this worth listening to?”
+- Call To Action: “What should I do?”
+- Tease Ahead: “Why should I stay?”
+
+Links are incomplete if any of the five sections are empty. BroadcastOS should warn when Context does not mention the show or feature, Recap is missing, Call To Action contains more than one competing listener action, or Tease Ahead is missing.
+
 ## Module map
 
 | Module | Route | Responsibility |
 | --- | --- | --- |
 | Today | `/today` | Daily Executive Producer briefing, priorities and readiness |
+| Executive Producer | `/executive-producer` | Cross-module daily briefing, risks and next actions |
 | Shows | `/shows` | Show profiles, DNA, structures and recurring features |
+| Schedule | `/schedule` | Premier Gospel week, UK-time Now On Air and Up Next |
 | Producer Desk | `/producer` | Build and prepare a dated show |
 | Content Library | `/content` | Master scripts, episodes, imported content and provenance |
 | Newsroom | `/newsroom` | Source library, story scoring, radio prep and show assignment |
@@ -46,8 +74,19 @@ Legacy route `/dashboard` redirects to `/today`. Existing production routes rema
 
 ### Built
 
+- Simplified four-item studio navigation
+- Local-first blank and template show builder
+- Drag-reorderable running order with editable titles, types, scripts, objectives, CTAs and producer notes
+- Context First readiness checks for every link
+- BroadcastOS Link Framework data model, reusable component and validation
+- Detailed Afternoons with Adam template: Afternoon Conversation, Adam’s Afternoon Arcade and Afternoon Uplift
+- On Air display for Context, Recap, The Moment, Call To Action and Tease Ahead
+- Manual WhatsApp/text message paste workflow
+- Shared On Air mode with live item progression
+- Persistent In-studio companion and Remote production modes
 - Premium responsive application shell and Premier brand styling
 - Today command centre using mock BroadcastOS data
+- Executive Producer daily briefing across shows, station, audience, stories and content
 - Three detailed Premier Gospel show profiles
 - Sundays with Adam Producer Desk
 - Sundays with Adam On Air mode
@@ -59,13 +98,15 @@ Legacy route `/dashboard` redirects to `/today`. Existing production routes rema
 - Import Centre with editable import cards
 - Newsroom source library, story inbox, preparation and assignment workflows
 - Broadcast Brain Feature Library and reusable feature DNA workflows
+- Premier Gospel weekly Schedule with shared Now On Air and Up Next banners
 - Source labels and shared content structures
 
 ### Manual for now
 
 - Show readiness calculations
 - Story selection and editorial scoring
-- Countdown and schedule status
+- Countdown status
+- Premier Plus schedule refresh
 - Document and screenshot extraction
 - Listener interaction import
 - Roll Call persistence
@@ -74,6 +115,8 @@ Legacy route `/dashboard` redirects to `/today`. Existing production routes rema
 
 ### Not connected
 
+- Zetta live playout, song title and remaining time
+- WhatsApp message feed
 - AI generation
 - Live RSS or news APIs
 - Notion database sync
@@ -94,6 +137,7 @@ Legacy route `/dashboard` redirects to `/today`. Existing production routes rema
 8. Audio asset storage, waveform review and playout references
 9. Aircheck transcript, timing analysis and improvement summaries
 10. Cross-show analytics for listener interaction and recurring feature performance
+11. Approved Premier Plus schedule sync or station schedule API
 
 ## Decision log
 
@@ -116,3 +160,23 @@ The interface explicitly distinguishes manual workflows, future AI, required RSS
 ### 2026-07-05 — Mock data remains the implementation boundary
 
 The current product demonstrates workflows and interaction design without a database, live AI, third-party API or station-system integration.
+
+### 2026-07-06 — Schedule is a shared station object
+
+The Premier Gospel week lives in one manual schedule structure. A UK-time resolver supplies Now On Air and Up Next across Today, Producer Desk, On Air and Station HQ, including programmes that cross midnight. The public Premier Plus pages are source references only; website sync/API is not connected.
+
+### 2026-07-06 — Usability before platform breadth
+
+The primary navigation is reduced to Today, Producer Desk, Newsroom and On Air. Producer Desk and On Air share a browser-saved local workspace that works without a database. Zetta and WhatsApp are treated as manual external studio systems: BroadcastOS never claims live playout or message-feed access it does not have.
+
+### 2026-07-06 — Working location controls tool depth
+
+In-studio companion mode assumes Zetta and WhatsApp remain on Premier’s studio systems, so BroadcastOS focuses on planning, links and On Air. Remote production mode keeps the fuller workflow and reveals manual WhatsApp paste tools. The selected mode persists with the local show workspace.
+
+### 2026-07-08 — Every link starts with context
+
+BroadcastOS now treats late joiners as the default listener. Before a link is ready, it must answer: “If somebody turned the radio on right now, would they understand what’s happening within 10 seconds?” The required link structure is Show ID, Feature ID, context, recap, progress, one CTA and tease ahead. Afternoons with Adam is structured around The Afternoon Conversation at 1PM, Adam’s Afternoon Arcade at 2PM and Afternoon Uplift at 3PM. Each hour must include at least two time checks, two station IDs and two presenter IDs.
+
+### 2026-07-08 — BroadcastOS Link Framework becomes global
+
+The Context First rule is now formalised as the BroadcastOS Link Framework across the whole app. Every future generated presenter link should use Context, Recap, The Moment, Call To Action and Tease Ahead by default across all shows, features and modes. Producer Desk, On Air, Content Library and Broadcast Brain all reference the shared framework.

@@ -32,6 +32,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { NowOnAirBanner } from "@/components/now-on-air-banner"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -205,6 +206,8 @@ export function StationLayerPage() {
           </div>
         </div>
       </header>
+
+      <NowOnAirBanner />
 
       {notice && (
         <div role="status" className="flex items-center gap-3 rounded-2xl border border-success/15 bg-success-soft px-4 py-3 text-sm text-success">

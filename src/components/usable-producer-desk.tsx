@@ -1,0 +1,453 @@
+"use client"
+
+import Link from "next/link"
+import { useMemo, useState } from "react"
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronRight,
+  CircleAlert,
+  ClipboardPaste,
+  Clock3,
+  CopyPlus,
+  FilePlus2,
+  GripVertical,
+  MessageSquareText,
+  MonitorPlay,
+  Plus,
+  Save,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { LinkFramework } from "@/components/link-framework"
+import { StudioModeSwitch } from "@/components/studio-mode-switch"
+import {
+  createBlankWorkspace,
+  createEmptyStudioItem,
+  createTemplateWorkspace,
+  getContextFirstReadiness,
+  parseListenerMessages,
+  saveStudioWorkspace,
+  studioShows,
+  useStudioWorkspace,
+  type StudioItem,
+  type StudioShowId,
+} from "@/lib/studio-workspace"
+import { cn } from "@/lib/utils"
+
+const fieldClass = "min-h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none transition focus:border-brand-indigo/40 focus:ring-2 focus:ring-brand-indigo/10"
+const textareaClass = `${fieldClass} resize-y py-3 leading-6`
+
+function Field({
+  label,
+  children,
+  hint,
+}: {
+  label: string
+  children: React.ReactNode
+  hint?: string
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+        {label}{hint && <span className="normal-case tracking-normal">{hint}</span>}
+      </span>
+      {children}
+    </label>
+  )
+}
+
+export function UsableProducerDesk() {
+  const workspace = useStudioWorkspace()
+  const [selectedId, setSelectedId] = useState("")
+  const [draggingId, setDraggingId] = useState("")
+  const [pasteValue, setPasteValue] = useState("")
+  const [notice, setNotice] = useState("")
+
+  const selected = useMemo(
+    () => workspace.items.find((item) => item.id === selectedId) ?? workspace.items[0],
+    [selectedId, workspace.items]
+  )
+
+  function save(next = workspace, message = "Saved in this browser.") {
+    saveStudioWorkspace(next)
+    setNotice(message)
+  }
+
+  function setDragging(id: string) {
+    setDraggingId(id)
+  }
+
+  function startTemplate(showId: StudioShowId) {
+    const next = createTemplateWorkspace(showId, workspace.date, workspace.mode)
+    save(next, `${studioShows[showId].name} template loaded.`)
+    setSelectedId(next.items[0]?.id ?? "")
+  }
+
+  function startBlank() {
+    if (workspace.items.length && !window.confirm("Clear the current running order and start blank?")) return
+    save(createBlankWorkspace(workspace.showId, workspace.date, workspace.mode), "Blank running order ready.")
+    setSelectedId("")
+  }
+
+  function updateItem(id: string, key: keyof StudioItem, value: string | boolean) {
+    saveStudioWorkspace({
+      ...workspace,
+      items: workspace.items.map((item) => item.id === id ? { ...item, [key]: value } : item),
+    })
+  }
+
+  function addItem() {
+    const newItem = createEmptyStudioItem()
+    save({ ...workspace, items: [...workspace.items, newItem] }, "New link added.")
+    setSelectedId(newItem.id)
+  }
+
+  function removeItem(id: string) {
+    const currentIndex = workspace.items.findIndex((item) => item.id === id)
+    const nextItems = workspace.items.filter((item) => item.id !== id)
+    save({ ...workspace, items: nextItems }, "Item removed.")
+    setSelectedId(nextItems[Math.max(0, currentIndex - 1)]?.id ?? "")
+  }
+
+  function moveItem(id: string, direction: -1 | 1) {
+    const index = workspace.items.findIndex((item) => item.id === id)
+    const target = index + direction
+    if (index < 0 || target < 0 || target >= workspace.items.length) return
+    const items = [...workspace.items]
+    ;[items[index], items[target]] = [items[target], items[index]]
+    saveStudioWorkspace({ ...workspace, items })
+  }
+
+  function dropItem(targetId: string) {
+    const sourceId = draggingId
+    if (!sourceId || sourceId === targetId) {
+      setDragging("")
+      return
+    }
+
+    const sourceIndex = workspace.items.findIndex((item) => item.id === sourceId)
+    const targetIndex = workspace.items.findIndex((item) => item.id === targetId)
+    if (sourceIndex < 0 || targetIndex < 0) return
+
+    const items = [...workspace.items]
+    const [moved] = items.splice(sourceIndex, 1)
+    items.splice(targetIndex, 0, moved)
+    save({ ...workspace, items }, `${moved.title} moved in the running order.`)
+    setDragging("")
+  }
+
+  function moveDraggedItem(targetId: string) {
+    const sourceId = draggingId
+    if (!sourceId || sourceId === targetId) return
+    const sourceIndex = workspace.items.findIndex((item) => item.id === sourceId)
+    const targetIndex = workspace.items.findIndex((item) => item.id === targetId)
+    if (sourceIndex < 0 || targetIndex < 0) return
+
+    const items = [...workspace.items]
+    const [moved] = items.splice(sourceIndex, 1)
+    items.splice(targetIndex, 0, moved)
+    saveStudioWorkspace({ ...workspace, items })
+  }
+
+  function addMessages() {
+    const messages = parseListenerMessages(pasteValue)
+    if (!messages.length) return
+    save({ ...workspace, messages: [...workspace.messages, ...messages] }, `${messages.length} listener message${messages.length === 1 ? "" : "s"} added.`)
+    setPasteValue("")
+  }
+
+  const show = studioShows[workspace.showId]
+  const completed = workspace.items.filter((item) => item.done).length
+  const selectedReadiness = selected ? getContextFirstReadiness(selected, show.name) : null
+  const readyLinks = workspace.items.filter((item) => getContextFirstReadiness(item, show.name).ready).length
+
+  return (
+    <div className="space-y-5">
+      <header className="rounded-[28px] bg-ink p-6 text-white shadow-card sm:p-8">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <div className="flex flex-wrap gap-2">
+              <Badge className="border-white/10 bg-white/10 text-white">Producer Desk</Badge>
+              <Badge className="border-emerald-400/20 bg-emerald-400/10 text-emerald-300"><Check />Works locally today</Badge>
+            </div>
+            <h1 className="mt-5 text-[38px] font-semibold tracking-[-0.05em] sm:text-[50px]">{show.name}</h1>
+            <p className="mt-2 text-sm text-white/50">{show.schedule} · {workspace.items.length} items · {completed} done · {readyLinks} framework-ready</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => save()}>
+              <Save />Save
+            </Button>
+            <Button asChild className="h-11 rounded-xl bg-white px-5 text-ink hover:bg-white/90">
+              <Link href="/broadcast"><MonitorPlay />Open On Air</Link>
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <StudioModeSwitch />
+
+      <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <Card className="rounded-[24px] border-brand-indigo/10 bg-gradient-to-br from-white to-brand-soft/35 py-0 shadow-card">
+          <CardContent className="p-5 sm:p-6">
+            <div className="flex items-start gap-4">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink text-white"><ShieldCheck className="size-5" /></span>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">BroadcastOS Link Framework</p>
+                <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Every listener joins mid-story.</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+                  Context first, always. Every generated presenter link now follows the same five sections across every show, feature and mode.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <LinkFramework compact />
+      </section>
+
+      {notice && (
+        <div role="status" className="flex items-center gap-2 rounded-xl border border-success/15 bg-success-soft px-4 py-3 text-sm text-success">
+          <Check className="size-4" />{notice}
+          <button type="button" className="ml-auto text-xs font-semibold" onClick={() => setNotice("")}>Dismiss</button>
+        </div>
+      )}
+
+      <Card className="rounded-[24px] py-0 shadow-card">
+        <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Show">
+              <select
+                className={fieldClass}
+                value={workspace.showId}
+                onChange={(event) => save({ ...workspace, showId: event.target.value as StudioShowId }, "Show changed. Choose a template or keep this running order.")}
+              >
+                {Object.entries(studioShows).map(([id, details]) => <option key={id} value={id}>{details.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Broadcast date">
+              <Input type="date" value={workspace.date} onChange={(event) => saveStudioWorkspace({ ...workspace, date: event.target.value })} />
+            </Field>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="rounded-xl" onClick={startBlank}><FilePlus2 />Start blank</Button>
+            <Button className="primary-action rounded-xl text-white" onClick={() => startTemplate(workspace.showId)}><CopyPlus />Load show template</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+        <section className="space-y-3">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">Today’s show</p>
+              <h2 className="mt-1 text-xl font-semibold">Running order</h2>
+              <p className="mt-1 text-[10px] text-muted-foreground">Drag the grip to reorder · arrow controls remain available</p>
+            </div>
+            <Button size="sm" variant="outline" className="rounded-xl" onClick={addItem}><Plus />Add item</Button>
+          </div>
+          {workspace.items.length === 0 ? (
+            <button type="button" onClick={addItem} className="w-full rounded-[22px] border border-dashed bg-white p-8 text-center">
+              <span className="mx-auto grid size-11 place-items-center rounded-2xl bg-brand-soft text-brand-indigo"><Plus className="size-5" /></span>
+              <span className="mt-4 block text-sm font-semibold">Your running order is blank</span>
+              <span className="mt-1 block text-xs text-muted-foreground">Add the first link, or load the show template above.</span>
+            </button>
+          ) : (
+            <div className="space-y-2">
+              {workspace.items.map((item, index) => (
+                (() => {
+                  const readiness = getContextFirstReadiness(item, show.name)
+                  return (
+                <div
+                  key={item.id}
+                  data-studio-item-id={item.id}
+                  draggable
+                  onDragStart={(event) => {
+                    setDragging(item.id)
+                    event.dataTransfer.effectAllowed = "move"
+                    event.dataTransfer.setData("text/plain", item.id)
+                  }}
+                  onDragEnd={() => setDragging("")}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => dropItem(item.id)}
+                  onPointerEnter={() => moveDraggedItem(item.id)}
+                  className={cn(
+                    "flex w-full items-center rounded-2xl border bg-white text-left transition-colors",
+                    selected?.id === item.id && "border-brand-indigo/25 bg-brand-soft/35 ring-2 ring-brand-indigo/10",
+                    draggingId === item.id && "opacity-45"
+                  )}
+                >
+                  <button
+                    type="button"
+                    aria-label={`Drag ${item.title} to reorder`}
+                    title="Drag to reorder"
+                    onPointerDown={(event) => {
+                      setDragging(item.id)
+                      event.currentTarget.setPointerCapture(event.pointerId)
+                      window.addEventListener("pointerup", () => setDragging(""), { once: true })
+                    }}
+                    onPointerMove={(event) => {
+                      if (!draggingId) return
+                      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-studio-item-id]")
+                      if (target?.dataset.studioItemId) moveDraggedItem(target.dataset.studioItemId)
+                    }}
+                    className="grid touch-none self-stretch cursor-grab place-items-center px-2 text-muted-foreground hover:text-brand-indigo active:cursor-grabbing"
+                  >
+                    <GripVertical className="size-4" />
+                  </button>
+                  <button type="button" onClick={() => setSelectedId(item.id)} className="flex min-w-0 flex-1 items-center gap-3 py-3.5 pr-3.5 text-left">
+                    <span className={cn("grid size-8 shrink-0 place-items-center rounded-xl font-mono text-[10px]", item.done ? "bg-success text-white" : "bg-muted text-muted-foreground")}>
+                      {item.done ? <Check className="size-3.5" /> : String(index + 1).padStart(2, "0")}
+                    </span>
+                      <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2"><span className="font-mono text-[10px] text-muted-foreground">{item.time || "No time"}</span><Badge variant="outline" className="text-[9px]">{item.type}</Badge>{item.hour && <Badge variant="outline" className="text-[9px]">{item.hour}</Badge>}</span>
+                      <span className="mt-1 block truncate text-sm font-semibold">{item.title}</span>
+                      <span className={cn("mt-1 inline-flex items-center gap-1 text-[10px] font-semibold", readiness.ready ? "text-success" : "text-amber-700")}>
+                        {readiness.ready ? <Check className="size-3" /> : <CircleAlert className="size-3" />}
+                        {readiness.ready ? "Framework ready" : `${readiness.score}/${readiness.total} complete`}
+                      </span>
+                    </span>
+                    <ChevronRight className="size-4 text-muted-foreground" />
+                  </button>
+                </div>
+                  )
+                })()
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section>
+          {selected ? (
+            <Card className="rounded-[24px] py-0 shadow-card">
+              <CardContent className="space-y-5 p-5 sm:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">Edit current item</p>
+                    <h2 className="mt-1 text-2xl font-semibold tracking-[-0.035em]">{selected.title}</h2>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="icon" aria-label="Move item up" onClick={() => moveItem(selected.id, -1)}><ArrowUp /></Button>
+                    <Button variant="outline" size="icon" aria-label="Move item down" onClick={() => moveItem(selected.id, 1)}><ArrowDown /></Button>
+                    <Button variant="outline" size="icon" aria-label="Delete item" className="text-destructive" onClick={() => removeItem(selected.id)}><Trash2 /></Button>
+                  </div>
+                </div>
+
+                {selectedReadiness && (
+                  <div className={cn("rounded-[22px] border p-4", selectedReadiness.ready ? "border-success/20 bg-success-soft" : "border-amber-200 bg-amber-50")}>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className={cn("text-[10px] font-semibold uppercase tracking-[0.15em]", selectedReadiness.ready ? "text-success" : "text-amber-800")}>BroadcastOS Link Framework check</p>
+                        <p className="mt-1 text-sm font-semibold">Every listener joins mid-story. Context first, always.</p>
+                      </div>
+                      <Badge className={cn(selectedReadiness.ready ? "bg-success text-white" : "bg-amber-200 text-amber-950")}>
+                        {selectedReadiness.ready ? "Ready" : `${selectedReadiness.score}/${selectedReadiness.total} complete`}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-5">
+                      {selectedReadiness.checks.map((check) => (
+                        <div key={check.label} title={check.hint} className={cn("rounded-2xl border px-3 py-2 text-xs font-semibold", check.ready ? "border-success/20 bg-white/70 text-success" : "border-amber-200 bg-white/70 text-amber-800")}>
+                          <span className="inline-flex items-center gap-1.5">{check.ready ? <Check className="size-3" /> : <CircleAlert className="size-3" />}{check.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedReadiness.warnings.length > 0 && (
+                      <div className="mt-3 rounded-2xl border border-amber-200 bg-white/70 p-3 text-xs leading-5 text-amber-900">
+                        <p className="font-semibold">Warnings</p>
+                        <ul className="mt-1 list-inside list-disc">
+                          {selectedReadiness.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="grid gap-4 sm:grid-cols-[130px_1fr_150px]">
+                  <Field label="Time"><Input type="time" value={selected.time} onChange={(event) => updateItem(selected.id, "time", event.target.value)} /></Field>
+                  <Field label="Title"><Input value={selected.title} onChange={(event) => updateItem(selected.id, "title", event.target.value)} /></Field>
+                  <Field label="Type">
+                    <select className={fieldClass} value={selected.type} onChange={(event) => updateItem(selected.id, "type", event.target.value)}>
+                      {["Link", "Feature", "Interaction", "Prayer", "Package", "Interview", "Song"].map((type) => <option key={type}>{type}</option>)}
+                    </select>
+                  </Field>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-[1fr_180px_150px]">
+                  <Field label="Objective"><Input value={selected.objective} onChange={(event) => updateItem(selected.id, "objective", event.target.value)} placeholder="What must this link achieve?" /></Field>
+                  <Field label="Feature ID"><Input value={selected.featureId} onChange={(event) => updateItem(selected.id, "featureId", event.target.value)} placeholder="Afternoon Uplift" /></Field>
+                  <Field label="Target duration"><Input value={selected.duration} onChange={(event) => updateItem(selected.id, "duration", event.target.value)} placeholder="02:00" /></Field>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Field label="Step 1 · Context" hint="Shown first in On Air">
+                    <textarea rows={4} className={textareaClass} value={selected.context} onChange={(event) => updateItem(selected.id, "context", event.target.value)} placeholder="You’re listening to Afternoons with Adam on Premier Gospel…" />
+                  </Field>
+                  <Field label="Step 2 · Recap">
+                    <textarea rows={4} className={textareaClass} value={selected.recap} onChange={(event) => updateItem(selected.id, "recap", event.target.value)} placeholder="If you’ve just joined us, we’re talking about…" />
+                  </Field>
+                </div>
+                <Field label="Step 3 · The Moment" hint="One clear idea only">
+                  <textarea rows={6} className={textareaClass} value={selected.script} onChange={(event) => updateItem(selected.id, "script", event.target.value)} placeholder="Story, listener message, clue, reveal, reflection, scripture, prayer, transition or station liner…" />
+                </Field>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Field label="Step 4 · Call To Action"><textarea rows={3} className={textareaClass} value={selected.cta} onChange={(event) => updateItem(selected.id, "cta", event.target.value)} placeholder="One primary listener action only." /></Field>
+                  <Field label="Step 5 · Tease Ahead"><textarea rows={3} className={textareaClass} value={selected.tease} onChange={(event) => updateItem(selected.id, "tease", event.target.value)} placeholder="Why should the listener stay?" /></Field>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Field label="Station requirements"><textarea rows={3} className={textareaClass} value={selected.stationRequirement} onChange={(event) => updateItem(selected.id, "stationRequirement", event.target.value)} placeholder="Time check · Station ID · Presenter ID · liner placement…" /></Field>
+                  <Field label="Producer notes"><textarea rows={3} className={textareaClass} value={selected.notes} onChange={(event) => updateItem(selected.id, "notes", event.target.value)} placeholder="Timing, audio, pronunciation or handover notes…" /></Field>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid min-h-[420px] place-items-center rounded-[24px] border border-dashed bg-white p-8 text-center">
+              <div><Clock3 className="mx-auto size-7 text-brand-indigo" /><p className="mt-3 font-semibold">Choose or add a running-order item</p><p className="mt-1 text-xs text-muted-foreground">The live script, CTA and notes will appear here.</p></div>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {workspace.mode === "remote" ? <section className="rounded-[26px] border bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">Manual listener inbox</p>
+            <h2 className="mt-1 text-xl font-semibold">Paste WhatsApp or text messages</h2>
+            <p className="mt-1 text-xs text-muted-foreground">One message per line. Nothing is connected to WhatsApp; only what you paste is stored.</p>
+          </div>
+          <Badge variant="outline"><ClipboardPaste />Manual paste only</Badge>
+        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+          <Field label="Messages">
+            <textarea rows={4} className={textareaClass} value={pasteValue} onChange={(event) => setPasteValue(event.target.value)} placeholder={"Michelle, Croydon — Please pray for my family.\nDavid, Manchester — Loving today’s question."} />
+          </Field>
+          <Button className="primary-action h-11 rounded-xl text-white" onClick={addMessages}><MessageSquareText />Add to On Air</Button>
+        </div>
+        {workspace.messages.length > 0 && (
+          <div className="mt-5 grid gap-2 md:grid-cols-2">
+            {workspace.messages.map((message) => (
+              <label key={message.id} className="flex items-start gap-3 rounded-2xl border bg-muted/20 p-3.5">
+                <input type="checkbox" checked={message.selected} onChange={() => saveStudioWorkspace({ ...workspace, messages: workspace.messages.map((item) => item.id === message.id ? { ...item, selected: !item.selected } : item) })} className="mt-1 accent-[var(--brand-indigo)]" />
+                <span className="min-w-0 flex-1 text-xs leading-5">{message.text}</span>
+                <button type="button" aria-label="Delete listener message" onClick={() => saveStudioWorkspace({ ...workspace, messages: workspace.messages.filter((item) => item.id !== message.id) })} className="text-muted-foreground hover:text-destructive"><Trash2 className="size-3.5" /></button>
+              </label>
+            ))}
+          </div>
+        )}
+      </section> : (
+        <section className="rounded-[24px] border bg-white p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-indigo"><MessageSquareText className="size-4" /></span>
+            <div><p className="text-sm font-semibold">Listener inbox hidden in studio mode</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Use the studio WhatsApp computer while you are in-house. Switch to Remote production when you need manual message paste.</p></div>
+          </div>
+        </section>
+      )}
+
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">
+        <strong>Zetta is not connected.</strong> BroadcastOS will not claim to know the live song, song remaining time or playout position. Screenshot import stays disabled until genuine OCR/vision extraction and a confirmation screen are connected.
+      </div>
+    </div>
+  )
+}

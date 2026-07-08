@@ -33,6 +33,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { LinkFramework } from "@/components/link-framework"
 import {
   Sheet,
   SheetContent,
@@ -118,6 +119,7 @@ export function BroadcastBrainPage() {
     const feature: FeatureState = {
       id,
       name: builder.name.trim(),
+      linkFrameworkId: "broadcastos-link-framework",
       showsUsedOn: [builder.show],
       purpose: builder.purpose.trim(),
       mission: `Make ${builder.name.trim()} a clear, repeatable part of ${builder.show}.`,
@@ -132,7 +134,7 @@ export function BroadcastBrainPage() {
       presenterGuidance: builder.presenter.trim() || "Presenter guidance to be completed.",
       producerGuidance: builder.producer.trim() || "Producer guidance to be completed.",
       productionWorkflow: builder.structure.split("\n").map((item) => item.trim()).filter(Boolean),
-      broadcastWorkflow: ["Set the promise", "Deliver the feature", "Invite interaction", "Exit cleanly"],
+      broadcastWorkflow: ["Context", "Recap", "The Moment", "Call To Action", "Tease Ahead"],
       interactionIdeas: [builder.interaction.trim() || "Interaction strategy to be completed."],
       suggestedCtas: ["CTA to be completed."],
       variations: ["Short version", "Extended version"],
@@ -193,6 +195,8 @@ export function BroadcastBrainPage() {
       </header>
 
       {notice && <div role="status" className="flex items-center gap-3 rounded-2xl border border-success/15 bg-success-soft px-4 py-3 text-sm text-success"><Check className="size-4" /><span className="flex-1">{notice}</span><button type="button" className="font-semibold" onClick={() => setNotice("")}>Dismiss</button></div>}
+
+      <LinkFramework compact className="shadow-card" />
 
       <section aria-labelledby="brain-overview">
         <div className="mb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-indigo">System intelligence</p><h2 id="brain-overview" className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Broadcast Brain overview</h2></div>
@@ -298,6 +302,7 @@ function FeatureCard({ feature, onOpen }: { feature: FeatureState; onOpen: () =>
         <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.13em] text-brand-indigo">{feature.showsUsedOn.join(" · ")}</p>
         <h3 className="mt-2 text-lg font-semibold leading-6 tracking-[-0.025em]">{feature.name}</h3>
         <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">{feature.purpose}</p>
+        <div className="mt-4 rounded-2xl border border-brand-indigo/10 bg-brand-soft/35 p-3 text-xs font-semibold text-brand-indigo">Uses BroadcastOS Link Framework</div>
         <div className="mt-5 grid grid-cols-2 gap-2 text-xs"><div className="rounded-xl bg-muted/50 p-3"><p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Length</p><p className="mt-1 font-medium">{feature.idealLength}</p></div><div className="rounded-xl bg-muted/50 p-3"><p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Energy</p><p className="mt-1 font-medium">{feature.energyLevel}</p></div><div className="rounded-xl bg-muted/50 p-3"><p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Emotion</p><p className="mt-1 font-medium">{feature.targetEmotion}</p></div><div className="rounded-xl bg-muted/50 p-3"><p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Interaction</p><p className="mt-1 truncate font-medium">{feature.interactionType}</p></div></div>
         <Button aria-label={`View Feature DNA for ${feature.name}`} variant="outline" className="mt-5 w-full rounded-xl" onClick={onOpen}>View Feature DNA<ArrowRight /></Button>
       </CardContent>
@@ -323,6 +328,7 @@ function FeatureDna({ feature }: { feature: FeatureState }) {
         <div className="grid gap-3 sm:grid-cols-2">{sections.map(([title, copy, Icon]) => <article key={title} className="rounded-2xl border p-4"><p className="flex items-center gap-2 text-xs font-semibold"><Icon className="size-4 text-brand-indigo" />{title}</p><p className="mt-2 text-sm leading-6 text-muted-foreground">{copy}</p></article>)}</div>
         <DnaList title="Required assets" icon={Layers3} items={feature.requiredAssets} />
         <div className="grid gap-4 sm:grid-cols-2"><DnaList title="Production workflow" icon={Workflow} items={feature.productionWorkflow} numbered /><DnaList title="Broadcast workflow" icon={Radio} items={feature.broadcastWorkflow} numbered /></div>
+        <LinkFramework compact />
         <div className="grid gap-4 sm:grid-cols-2"><DnaList title="Listener interaction ideas" icon={MessageCircleMore} items={feature.interactionIdeas} /><DnaList title="Suggested CTAs" icon={Mic2} items={feature.suggestedCtas} /></div>
         <div className="grid gap-4 sm:grid-cols-2"><DnaList title="Possible variations" icon={Sparkles} items={feature.variations} /><DnaList title="Success metrics" icon={BarChart3} items={feature.successMetrics} /></div>
         <DnaList title="History" icon={History} items={feature.history} />

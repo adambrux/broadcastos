@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 
 import { ProducerRollCallBuilder } from "@/components/producer-roll-call-builder"
+import { NowOnAirBanner } from "@/components/now-on-air-banner"
 import { StationBriefPanel } from "@/components/station-brief-panel"
 import { SundaySchoolModule } from "@/components/sunday-school-module"
 import { Badge } from "@/components/ui/badge"
@@ -294,6 +295,8 @@ export function ProducerOSPage() {
           </Button>
         </div>
       </header>
+
+      <NowOnAirBanner />
 
       {notice && (
         <div role="status" className="flex items-center gap-2 rounded-xl border border-success/15 bg-success-soft px-4 py-3 text-sm text-success">

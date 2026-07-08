@@ -1,3 +1,5 @@
+import type { LinkFrameworkValues } from "@/lib/link-framework"
+
 export type ContentSource =
   | "Manual"
   | "Imported from briefing"
@@ -25,6 +27,7 @@ export type ContentItem = {
   updated: string
   status: "Ready" | "Draft" | "Needs review" | "Archived"
   excerpt: string
+  linkFramework?: LinkFrameworkValues
 }
 
 export type RollCallMember = {
@@ -98,6 +101,13 @@ export const contentItems: readonly ContentItem[] = [
     updated: "3 July · 16:42",
     status: "Ready",
     excerpt: "Think you can spot the Judas? Watch now on the Premier Gospel YouTube channel.",
+    linkFramework: {
+      context: "You’re listening to Afternoons with Adam on Premier Gospel, and here’s a quick station liner.",
+      recap: "If you’ve just joined us, Premier Gospel is pointing you towards Guess The Judas on YouTube.",
+      moment: "Think you can spot the Judas? Watch Guess The Judas now on the Premier Gospel YouTube channel and join the conversation.",
+      cta: "Watch Guess The Judas on the Premier Gospel YouTube channel.",
+      tease: "I’ll bring you back into today’s Afternoon Conversation after this.",
+    },
   },
   {
     id: "prayer-andy-peck",
@@ -118,6 +128,13 @@ export const contentItems: readonly ContentItem[] = [
     updated: "3 July · 14:05",
     status: "Draft",
     excerpt: "One verified good-news story, one listener voice and one practical line of hope.",
+    linkFramework: {
+      context: "You’re listening to Afternoons with Adam on Premier Gospel, and this is today’s Hope Report.",
+      recap: "If you’ve just joined us, the Hope Report is one story that reminds us good is still happening in the world.",
+      moment: "Today’s story is [story]. The reason it matters is [one clear hope angle].",
+      cta: "Send one place you saw hope today.",
+      tease: "I’ll read a few of your messages after the next song.",
+    },
   },
   {
     id: "guest-guvna-b",
