@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { StudioModeSwitch } from "@/components/studio-mode-switch"
+import { AudioLevelMeter, LiveStatusPill, StudioAmbient, StudioSignalStrip } from "@/components/studio-motion"
 import {
   parseListenerMessages,
   saveStudioWorkspace,
@@ -117,19 +118,22 @@ export function UsableOnAir() {
 
   return (
     <div className="fixed inset-0 z-[45] overflow-auto bg-[#08090d] text-white">
+      <StudioAmbient />
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#08090d]/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="relative grid size-10 shrink-0 place-items-center rounded-xl bg-white text-ink"><Mic2 className="size-4" /><span className="absolute right-0 top-0 size-2.5 rounded-full border-2 border-white bg-red-500" /></span>
+            <span className="relative grid size-10 shrink-0 place-items-center rounded-xl bg-white text-ink"><Mic2 className="size-4" /><span className="studio-live-dot absolute right-0 top-0 border-2 border-white" /></span>
             <div className="min-w-0"><p className="truncate text-sm font-semibold">{show.name}</p><p className="text-[10px] text-white/40">Item {activeIndex + 1} of {workspace.items.length}</p></div>
           </div>
-          <div className="hidden items-center gap-4 md:flex"><StudioModeSwitch dark compact /><div className="text-center"><p className="font-mono text-2xl font-semibold">{getUkTimeLabel(new Date(clock))}</p><p className="text-[9px] uppercase tracking-[0.14em] text-white/35">UK time</p></div></div>
+          <div className="hidden items-center gap-4 md:flex"><LiveStatusPill dark label="On Air" /><AudioLevelMeter dark className="h-8" /><StudioModeSwitch dark compact /><div className="text-center"><p className="font-mono text-2xl font-semibold">{getUkTimeLabel(new Date(clock))}</p><p className="text-[9px] uppercase tracking-[0.14em] text-white/35">UK time</p></div></div>
           <Button asChild variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"><Link href="/producer"><ArrowLeft />Exit On Air</Link></Button>
         </div>
         <div className="h-1 bg-white/5"><div className="h-full bg-gradient-to-r from-violet-400 to-fuchsia-400" style={{ width: `${progress}%` }} /></div>
       </header>
 
-      <main className="mx-auto max-w-[1500px] space-y-4 px-5 pb-28 pt-5 sm:px-8">
+      <main className="relative mx-auto max-w-[1500px] space-y-4 px-5 pb-28 pt-5 sm:px-8">
+        <StudioSignalStrip dark message="Presenter mode · read top to bottom · next cue stays visible" />
+
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300/15 bg-amber-300/[0.07] px-4 py-3 text-xs text-amber-100/75">
           <span>{workspace.mode === "in-studio" ? <><strong className="text-amber-100">Studio companion mode.</strong> Zetta and WhatsApp remain on the in-house systems.</> : <><strong className="text-amber-100">Remote production mode.</strong> Paste WhatsApp messages manually; Zetta is not connected.</>}</span>
           <Badge className="border-amber-200/15 bg-amber-200/10 text-amber-100">{workspace.mode === "in-studio" ? "In studio" : "Remote"}</Badge>
@@ -140,7 +144,7 @@ export function UsableOnAir() {
             <article className="rounded-[26px] bg-white p-6 text-ink shadow-[0_24px_80px_rgba(0,0,0,.35)] sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-indigo">Current item · {current.time || "No fixed time"}</p><h1 className="mt-2 text-[34px] font-semibold leading-tight tracking-[-0.05em] sm:text-[48px]">{current.title}</h1></div>
-                <Badge className="bg-red-50 text-red-600"><span className="size-1.5 rounded-full bg-red-500" />On air</Badge>
+                <Badge className="bg-red-50 text-red-600"><span className="studio-live-dot" />On air</Badge>
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl bg-muted/60 p-4"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Type</p><p className="mt-2 font-semibold">{current.type}</p></div>

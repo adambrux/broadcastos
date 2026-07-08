@@ -27,6 +27,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { LinkFramework } from "@/components/link-framework"
 import { StudioModeSwitch } from "@/components/studio-mode-switch"
+import { AudioLevelMeter, LiveStatusPill, StudioAmbient, StudioSignalStrip } from "@/components/studio-motion"
 import {
   createBlankWorkspace,
   createEmptyStudioItem,
@@ -170,31 +171,37 @@ export function UsableProducerDesk() {
 
   return (
     <div className="space-y-5">
-      <header className="rounded-[28px] bg-ink p-6 text-white shadow-card sm:p-8">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+      <header className="relative overflow-hidden rounded-[28px] bg-ink p-6 text-white shadow-card sm:p-8">
+        <StudioAmbient />
+        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge className="border-white/10 bg-white/10 text-white">Producer Desk</Badge>
               <Badge className="border-emerald-400/20 bg-emerald-400/10 text-emerald-300"><Check />Works locally today</Badge>
+              <LiveStatusPill dark label="Desk alive" />
             </div>
             <h1 className="mt-5 text-[38px] font-semibold tracking-[-0.05em] sm:text-[50px]">{show.name}</h1>
             <p className="mt-2 text-sm text-white/50">{show.schedule} · {workspace.items.length} items · {completed} done · {readyLinks} framework-ready</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => save()}>
-              <Save />Save
-            </Button>
-            <Button asChild className="h-11 rounded-xl bg-white px-5 text-ink hover:bg-white/90">
-              <Link href="/broadcast"><MonitorPlay />Open On Air</Link>
-            </Button>
+          <div className="flex flex-col gap-4 xl:items-end">
+            <AudioLevelMeter dark className="h-9" />
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => save()}>
+                <Save />Save
+              </Button>
+              <Button asChild className="h-11 rounded-xl bg-white px-5 text-ink hover:bg-white/90">
+                <Link href="/broadcast"><MonitorPlay />Open On Air</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       <StudioModeSwitch />
+      <StudioSignalStrip message="Studio pulse · drag items around · framework checks update as you write" />
 
       <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <Card className="rounded-[24px] border-brand-indigo/10 bg-gradient-to-br from-white to-brand-soft/35 py-0 shadow-card">
+        <Card className="studio-card-lift rounded-[24px] border-brand-indigo/10 bg-gradient-to-br from-white to-brand-soft/35 py-0 shadow-card">
           <CardContent className="p-5 sm:p-6">
             <div className="flex items-start gap-4">
               <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink text-white"><ShieldCheck className="size-5" /></span>
@@ -218,7 +225,7 @@ export function UsableProducerDesk() {
         </div>
       )}
 
-      <Card className="rounded-[24px] py-0 shadow-card">
+      <Card className="studio-card-lift rounded-[24px] py-0 shadow-card">
         <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-end">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Show">
@@ -277,7 +284,7 @@ export function UsableProducerDesk() {
                   onDrop={() => dropItem(item.id)}
                   onPointerEnter={() => moveDraggedItem(item.id)}
                   className={cn(
-                    "flex w-full items-center rounded-2xl border bg-white text-left transition-colors",
+                    "flex w-full items-center rounded-2xl border bg-white text-left transition-all hover:-translate-y-0.5 hover:border-brand-indigo/25 hover:shadow-sm",
                     selected?.id === item.id && "border-brand-indigo/25 bg-brand-soft/35 ring-2 ring-brand-indigo/10",
                     draggingId === item.id && "opacity-45"
                   )}

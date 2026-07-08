@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { LiveStatusPill, StudioSignalStrip } from "@/components/studio-motion"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,7 +66,10 @@ function NavigationLinks({ mobile = false }: { mobile?: boolean }) {
             )}
           >
             <Icon className={cn("size-[18px]", active && "text-brand-indigo")} strokeWidth={1.8} />
-            {label}
+            <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+              <span>{label}</span>
+              {label === "On Air" && <span className="studio-live-dot size-1.5" aria-hidden="true" />}
+            </span>
           </Link>
         )
       })}
@@ -90,9 +94,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[224px] border-r border-border/70 bg-sidebar px-4 py-7 lg:flex lg:flex-col">
         <div className="px-2">
           <Brand />
+          <div className="mt-4">
+            <LiveStatusPill label="Studio alive" className="w-full justify-center" />
+          </div>
         </div>
         <div className="mt-9 min-h-0 flex-1 overflow-y-auto pr-1">
           <NavigationLinks />
+        </div>
+        <div className="mb-4">
+          <StudioSignalStrip message="Producer Desk · On Air · Newsroom ready" />
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -129,6 +139,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Brand />
             </SheetHeader>
             <NavigationLinks mobile />
+            <div className="mt-6">
+              <StudioSignalStrip message="Studio signal active" />
+            </div>
           </SheetContent>
         </Sheet>
       </header>
