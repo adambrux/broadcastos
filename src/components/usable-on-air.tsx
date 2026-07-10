@@ -1,12 +1,13 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useMemo, useState } from "react"
 import {
   ArrowLeft,
   ArrowRight,
   Check,
-  Mic2,
+  Music2,
   Plus,
   Radio,
 } from "lucide-react"
@@ -35,6 +36,10 @@ export function UsableOnAir() {
   const current = workspace.items[activeIndex]
   const next = workspace.items[activeIndex + 1]
   const selectedMessages = useMemo(() => workspace.messages.filter((message) => message.selected), [workspace.messages])
+  const selectedSongRequests = useMemo(
+    () => selectedMessages.flatMap((message) => message.songRequests.map((request) => ({ id: `${message.id}-${request}`, request, sender: message.sender }))),
+    [selectedMessages]
+  )
   const progress = workspace.items.length ? ((activeIndex + (current?.done ? 1 : 0)) / workspace.items.length) * 100 : 0
   const show = studioShows[workspace.showId]
   const readiness = current ? getContextFirstReadiness(current, show.name) : null
@@ -122,7 +127,10 @@ export function UsableOnAir() {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#08090d]/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="relative grid size-10 shrink-0 place-items-center rounded-xl bg-white text-ink"><Mic2 className="size-4" /><span className="studio-live-dot absolute right-0 top-0 border-2 border-white" /></span>
+            <span className="relative grid h-10 w-[58px] shrink-0 place-items-center rounded-xl bg-white px-2 shadow-sm">
+              <Image src="/premier-logo.svg" alt="Premier" width={126} height={59} priority className="h-auto w-[46px]" />
+              <span className="studio-live-dot absolute right-0 top-0 border-2 border-white" />
+            </span>
             <div className="min-w-0"><p className="truncate text-sm font-semibold">{show.name}</p><p className="text-[10px] text-white/40">Item {activeIndex + 1} of {workspace.items.length}</p></div>
           </div>
           <div className="hidden items-center gap-4 md:flex"><LiveStatusPill dark label="On Air" /><AudioLevelMeter dark className="h-8" /><StudioModeSwitch dark compact /><div className="text-center"><p className="font-mono text-2xl font-semibold">{getUkTimeLabel(new Date(clock))}</p><p className="text-[9px] uppercase tracking-[0.14em] text-white/35">UK time</p></div></div>
@@ -224,9 +232,30 @@ export function UsableOnAir() {
             {workspace.mode === "remote" && <div className="rounded-[22px] border border-white/10 bg-white/[0.045] p-5">
               <div className="flex items-center justify-between"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">Pasted messages</p><Badge className="bg-white/10 text-white">{selectedMessages.length}</Badge></div>
               <div className="mt-4 space-y-2">
-                {selectedMessages.length ? selectedMessages.map((message) => <div key={message.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-white/75">{message.text}</div>) : <p className="text-xs leading-5 text-white/40">Paste listener messages below or in Producer Desk.</p>}
+                {selectedMessages.length ? selectedMessages.map((message) => (
+                  <div key={message.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-white/75">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {message.sender && <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-semibold text-white">{message.sender}</span>}
+                      {message.songRequests.length > 0 && <span className="rounded-full bg-violet-300/15 px-2 py-1 text-[10px] font-semibold text-violet-100"><Music2 className="mr-1 inline size-3" />Song request</span>}
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap">{message.body}</p>
+                  </div>
+                )) : <p className="text-xs leading-5 text-white/40">Paste listener messages below or in Producer Desk.</p>}
               </div>
-              <textarea rows={3} value={pasteValue} onChange={(event) => setPasteValue(event.target.value)} placeholder="Paste one message per line…" className="mt-4 w-full resize-y rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-white outline-none placeholder:text-white/25 focus:border-violet-400/40" />
+              {selectedSongRequests.length > 0 && (
+                <div className="mt-4 rounded-2xl border border-violet-300/15 bg-violet-300/[0.08] p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-100">Song requests</p>
+                  <div className="mt-2 space-y-2">
+                    {selectedSongRequests.map((song) => (
+                      <div key={song.id} className="rounded-xl bg-black/20 p-2 text-xs text-white/75">
+                        <p className="font-semibold text-white">{song.request}</p>
+                        {song.sender && <p className="mt-1 text-white/40">From {song.sender}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <textarea rows={4} spellCheck value={pasteValue} onChange={(event) => setPasteValue(event.target.value)} placeholder="Paste WhatsApp blocks. Multi-line messages stay together…" className="mt-4 w-full resize-y rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-white outline-none placeholder:text-white/25 focus:border-violet-400/40" />
               <Button variant="outline" size="sm" className="mt-2 w-full rounded-xl border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={addMessages}><Plus />Add messages</Button>
             </div>}
           </aside>

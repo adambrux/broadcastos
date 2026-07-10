@@ -17,6 +17,7 @@ import {
   ListChecks,
   MessageSquareText,
   MonitorPlay,
+  Music2,
   Plus,
   Save,
   ShieldCheck,
@@ -251,6 +252,7 @@ export function UsableProducerDesk() {
   const completed = workspace.items.filter((item) => item.done).length
   const selectedReadiness = selected ? getContextFirstReadiness(selected, show.name) : null
   const readyLinks = workspace.items.filter((item) => getContextFirstReadiness(item, show.name).ready).length
+  const songRequests = workspace.messages.flatMap((message) => message.songRequests.map((request) => ({ id: `${message.id}-${request}`, request, sender: message.sender })))
 
   return (
     <div className="space-y-5">
@@ -621,22 +623,57 @@ export function UsableProducerDesk() {
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">Manual listener inbox</p>
             <h2 className="mt-1 text-xl font-semibold">Paste WhatsApp or text messages</h2>
-            <p className="mt-1 text-xs text-muted-foreground">One message per line. Nothing is connected to WhatsApp; only what you paste is stored.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Paste one message, multiple lines, or several WhatsApp blocks. Browser spellcheck is enabled; AI correction is not connected yet.</p>
           </div>
-          <Badge variant="outline"><ClipboardPaste />Manual paste only</Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline"><ClipboardPaste />Manual paste only</Badge>
+            <Badge className="bg-success-soft text-success">Spellcheck enabled</Badge>
+          </div>
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
           <Field label="Messages">
-            <textarea rows={4} className={textareaClass} value={pasteValue} onChange={(event) => setPasteValue(event.target.value)} placeholder={"Michelle, Croydon — Please pray for my family.\nDavid, Manchester — Loving today’s question."} />
+            <textarea
+              rows={6}
+              spellCheck
+              className={textareaClass}
+              value={pasteValue}
+              onChange={(event) => setPasteValue(event.target.value)}
+              placeholder={"Michelle, Croydon — Please pray for my family.\nIt has been a hard week but today's conversation is helping.\n\nDavid: Can you play Promises by Maverick City please?\n\nSarah - Loving today’s question."}
+            />
           </Field>
           <Button className="primary-action h-11 rounded-xl text-white" onClick={addMessages}><MessageSquareText />Add to On Air</Button>
         </div>
+        {songRequests.length > 0 && (
+          <div className="mt-5 rounded-[22px] border border-brand-indigo/10 bg-brand-soft/35 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">Song requests detected</p>
+                <p className="mt-1 text-xs text-muted-foreground">Pulled from pasted listener messages. Check wording before reading on air.</p>
+              </div>
+              <Badge className="bg-white text-brand-indigo"><Music2 />{songRequests.length}</Badge>
+            </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {songRequests.map((song) => (
+                <div key={song.id} className="rounded-2xl border bg-white p-3 text-xs">
+                  <p className="font-semibold">{song.request}</p>
+                  {song.sender && <p className="mt-1 text-muted-foreground">Requested by {song.sender}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {workspace.messages.length > 0 && (
           <div className="mt-5 grid gap-2 md:grid-cols-2">
             {workspace.messages.map((message) => (
               <label key={message.id} className="flex items-start gap-3 rounded-2xl border bg-muted/20 p-3.5">
                 <input type="checkbox" checked={message.selected} onChange={() => saveStudioWorkspace({ ...workspace, messages: workspace.messages.map((item) => item.id === message.id ? { ...item, selected: !item.selected } : item) })} className="mt-1 accent-[var(--brand-indigo)]" />
-                <span className="min-w-0 flex-1 text-xs leading-5">{message.text}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2">
+                    {message.sender && <span className="rounded-full bg-brand-soft px-2 py-1 text-[10px] font-semibold text-brand-indigo">{message.sender}</span>}
+                    {message.songRequests.length > 0 && <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-brand-indigo"><Music2 className="mr-1 inline size-3" />Song request</span>}
+                  </span>
+                  <span className="mt-2 block whitespace-pre-wrap text-xs leading-5">{message.body}</span>
+                </span>
                 <button type="button" aria-label="Delete listener message" onClick={() => saveStudioWorkspace({ ...workspace, messages: workspace.messages.filter((item) => item.id !== message.id) })} className="text-muted-foreground hover:text-destructive"><Trash2 className="size-3.5" /></button>
               </label>
             ))}

@@ -29,7 +29,10 @@ export type StudioItem = {
 
 export type ListenerMessage = {
   id: string
+  sender: string
+  body: string
   text: string
+  songRequests: string[]
   selected: boolean
 }
 
@@ -463,6 +466,17 @@ function normalizeItem(item: StudioItem): StudioItem {
   }
 }
 
+function normalizeMessage(message: ListenerMessage): ListenerMessage {
+  return {
+    ...message,
+    sender: message.sender ?? "",
+    body: message.body ?? message.text ?? "",
+    text: message.text ?? message.body ?? "",
+    songRequests: message.songRequests ?? [],
+    selected: message.selected ?? true,
+  }
+}
+
 function getSnapshot() {
   return window.localStorage.getItem(storageKey) ?? fallbackSnapshot
 }
@@ -480,7 +494,7 @@ function subscribe(listener: () => void) {
 export function useStudioWorkspace() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, () => fallbackSnapshot)
   const workspace = JSON.parse(snapshot) as StudioWorkspace
-  return { ...workspace, mode: workspace.mode ?? "remote", items: (workspace.items ?? []).map(normalizeItem), messages: workspace.messages ?? [] }
+  return { ...workspace, mode: workspace.mode ?? "remote", items: (workspace.items ?? []).map(normalizeItem), messages: (workspace.messages ?? []).map(normalizeMessage) }
 }
 
 export function saveStudioWorkspace(workspace: StudioWorkspace) {
@@ -527,13 +541,85 @@ export function getStudioItemFrameworkValues(item: StudioItem): LinkFrameworkVal
 }
 
 export function parseListenerMessages(value: string): ListenerMessage[] {
-  return value
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((text, index) => ({
+  return splitListenerBlocks(value).map((rawText, index) => {
+    const { sender, body } = parseListenerIdentity(rawText)
+    return {
       id: `message-${Date.now()}-${index}`,
-      text,
+      sender,
+      body,
+      text: sender ? `${sender}: ${body}` : body,
+      songRequests: extractSongRequests(body),
       selected: true,
-    }))
+    }
+  })
+}
+
+function splitListenerBlocks(value: string) {
+  const normalized = value.replace(/\r\n/g, "\n").trim()
+  if (!normalized) return []
+
+  const paragraphBlocks = normalized
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+
+  if (paragraphBlocks.length > 1) return paragraphBlocks
+
+  const blocks: string[] = []
+  let current = ""
+
+  normalized.split("\n").forEach((line) => {
+    const trimmed = line.trim()
+    if (!trimmed) return
+
+    if (looksLikeMessageStart(trimmed) && current) {
+      blocks.push(current.trim())
+      current = trimmed
+      return
+    }
+
+    current = [current, trimmed].filter(Boolean).join("\n")
+  })
+
+  if (current.trim()) blocks.push(current.trim())
+  return blocks
+}
+
+function looksLikeMessageStart(line: string) {
+  const withoutTimestamp = line.replace(/^\[?\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?,?\s*\d{1,2}:\d{2}\]?\s*[-–—]?\s*/, "")
+  return /^[A-Z][A-Za-z .'-]{1,40}(?:,\s*[A-Za-z .'-]{2,40})?\s*(?:[:\-–—])\s+\S/.test(withoutTimestamp)
+}
+
+function parseListenerIdentity(rawText: string) {
+  const cleaned = rawText
+    .replace(/^\[?\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?,?\s*\d{1,2}:\d{2}\]?\s*[-–—]?\s*/, "")
+    .trim()
+  const match = cleaned.match(/^([A-Z][A-Za-z .'-]{1,50}(?:,\s*[A-Za-z .'-]{2,40})?)\s*(?:[:\-–—])\s*([\s\S]+)$/)
+
+  if (!match) return { sender: "", body: cleaned }
+
+  return {
+    sender: match[1].trim(),
+    body: match[2].trim(),
+  }
+}
+
+function extractSongRequests(value: string) {
+  const requests = new Set<string>()
+  const patterns = [
+    /\b(?:song request|request)\s*[:\-–—]?\s*([^\n.]+)/gi,
+    /\b(?:please|pls|can you|could you|would you)?\s*play\s+([^\n.]+)/gi,
+  ]
+
+  patterns.forEach((pattern) => {
+    for (const match of value.matchAll(pattern)) {
+      const request = match[1]
+        ?.replace(/\b(?:for me|please|pls|thanks|thank you)\b.*$/i, "")
+        .replace(/\s+/g, " ")
+        .trim()
+      if (request && request.length > 2) requests.add(request)
+    }
+  })
+
+  return Array.from(requests)
 }
