@@ -48,8 +48,8 @@ const item = (
 const weekdayDaytime = (day: ScheduleDay, eveningFeature: string, eveningDescription: string) => [
   item(day, "01:00", "07:00", "Overnights", "Praise and worship music through the night."),
   item(day, "07:00", "10:00", "Gospel Breakfast", "An uplifting, interactive start to the day with gospel music.", "Belinda Brooks"),
-  item(day, "10:00", "13:00", "Daytimes on Gospel", "Music, encouragement, news updates and stories of faith from across the UK."),
-  item(day, "13:00", "16:00", "Afternoons", "Conversation, listener interaction, encouragement and the biggest gospel tracks."),
+  item(day, "10:00", "13:00", "Daytimes with Ibe Giantkiller", "Music, encouragement, news updates and stories of faith from across the UK.", "Ibe Giantkiller"),
+  item(day, "13:00", "16:00", "Afternoons with Adam", "Conversation, listener interaction, encouragement and the biggest gospel tracks.", "Adam Brooks"),
   item(day, "16:00", "19:00", "Gospel Drive", "Music, games and conversation to carry listeners through the journey home.", "Cassandra Maria"),
   item(day, "19:00", "20:00", "DJ Guest Mix", "A guest Christian DJ takes over with an energetic themed mix."),
   item(day, "20:00", "22:00", eveningFeature, eveningDescription),
@@ -81,8 +81,8 @@ export const premierGospelSchedule: Record<ScheduleDay, ScheduleItem[]> = {
   friday: [
     item("friday", "01:00", "07:00", "Overnights", "Praise and worship music through the night."),
     item("friday", "07:00", "10:00", "Gospel Breakfast", "Queen B brings the music and energy to start Friday well.", "Belinda Brooks"),
-    item("friday", "10:00", "13:00", "Daytimes on Gospel", "News, stories of faith, inspiration and gospel music."),
-    item("friday", "13:00", "16:00", "Afternoons With Ibe Giantkiller", "Daily dilemmas, Bible readings, laughter and listener conversation.", "Ibe Giantkiller"),
+    item("friday", "10:00", "13:00", "Daytimes with Ibe Giantkiller", "News, stories of faith, inspiration and gospel music.", "Ibe Giantkiller"),
+    item("friday", "13:00", "16:00", "Afternoons with Adam", "Daily dilemmas, Bible readings, laughter and listener conversation.", "Adam Brooks"),
     item("friday", "16:00", "19:00", "Gospel Drive", "Music, games and conversation for the drive home.", "Cassandra Maria"),
     item("friday", "19:00", "20:00", "DJ Guest Mix", "A guest Christian DJ takes over the Premier Gospel airwaves."),
     item("friday", "20:00", "22:00", "The Latin Selection", "Latin gospel, joyful rhythms and stories from the music.", "Paula Melissa"),
