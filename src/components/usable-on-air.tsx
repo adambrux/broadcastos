@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft,
   ArrowRight,
@@ -32,6 +32,7 @@ export function UsableOnAir() {
   const firstOpen = Math.max(0, workspace.items.findIndex((item) => !item.done))
   const [activeIndex, setActiveIndex] = useState(firstOpen)
   const [pasteValue, setPasteValue] = useState("")
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const current = workspace.items[activeIndex]
   const next = workspace.items[activeIndex + 1]
@@ -44,13 +45,22 @@ export function UsableOnAir() {
   const show = studioShows[workspace.showId]
   const readiness = current ? getContextFirstReadiness(current, show.name) : null
 
+  useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [activeIndex])
+
+  function moveToItem(index: number) {
+    setActiveIndex(Math.min(workspace.items.length - 1, Math.max(0, index)))
+  }
+
   function markDone() {
     if (!current) return
     saveStudioWorkspace({
       ...workspace,
       items: workspace.items.map((item) => item.id === current.id ? { ...item, done: true } : item),
     })
-    setActiveIndex((index) => Math.min(workspace.items.length - 1, index + 1))
+    moveToItem(activeIndex + 1)
   }
 
   function addMessages() {
@@ -122,7 +132,7 @@ export function UsableOnAir() {
   ]
 
   return (
-    <div className="fixed inset-0 z-[45] overflow-auto bg-[#08090d] text-white">
+    <div ref={scrollContainerRef} className="fixed inset-0 z-[45] overflow-auto bg-[#08090d] text-white">
       <StudioAmbient />
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#08090d]/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
@@ -264,9 +274,9 @@ export function UsableOnAir() {
 
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#08090d]/95 px-5 py-3 backdrop-blur sm:px-8">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3">
-          <Button variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={activeIndex === 0} onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}><ArrowLeft />Previous</Button>
+          <Button variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={activeIndex === 0} onClick={() => moveToItem(activeIndex - 1)}><ArrowLeft />Previous</Button>
           <Button className="h-12 rounded-xl bg-white px-7 text-ink hover:bg-white/90" onClick={markDone}><Check />Mark done</Button>
-          <Button variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={!next} onClick={() => setActiveIndex((index) => Math.min(workspace.items.length - 1, index + 1))}>Next<ArrowRight /></Button>
+          <Button variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={!next} onClick={() => moveToItem(activeIndex + 1)}>Next<ArrowRight /></Button>
         </div>
       </footer>
     </div>
