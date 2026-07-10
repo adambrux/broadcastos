@@ -6,6 +6,7 @@ import { ArrowRight, Check, MessageSquareText, Newspaper, Radio, SlidersHorizont
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { NowOnAirBanner } from "@/components/now-on-air-banner"
 import { StudioModeSwitch } from "@/components/studio-mode-switch"
 import { AudioLevelMeter, LiveStatusPill, StudioAmbient, StudioSignalStrip } from "@/components/studio-motion"
 import { studioShows, useStudioWorkspace } from "@/lib/studio-workspace"
@@ -41,6 +42,7 @@ export function StudioHome() {
       </header>
 
       <StudioModeSwitch />
+      <NowOnAirBanner />
 
       <section className="grid gap-4 md:grid-cols-3">
         <Card className="studio-card-lift rounded-[24px] py-0 shadow-card">

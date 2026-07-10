@@ -21,6 +21,7 @@ export type StudioItem = {
   script: string
   cta: string
   tease: string
+  fallback: string
   stationRequirement: string
   notes: string
   done: boolean
@@ -69,6 +70,7 @@ const makeItem = (
   script: details.script ?? "",
   cta: details.cta ?? "",
   tease: details.tease ?? "",
+  fallback: details.fallback ?? "",
   stationRequirement: details.stationRequirement ?? "",
   notes: details.notes ?? "",
   done: false,
@@ -455,7 +457,9 @@ function normalizeItem(item: StudioItem): StudioItem {
     script: item.script ?? "",
     cta: item.cta ?? "",
     tease: item.tease ?? "",
+    fallback: item.fallback ?? "",
     stationRequirement: item.stationRequirement ?? "",
+    notes: item.notes ?? "",
   }
 }
 

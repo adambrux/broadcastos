@@ -43,7 +43,7 @@ export function NowOnAirBanner({
             dark ? "bg-white text-ink" : "bg-ink text-white"
           )}>
             <Radio className="size-[17px]" />
-            <span className="absolute right-0.5 top-0.5 size-2.5 rounded-full border-2 border-white bg-red-500" />
+            <span className="studio-live-dot absolute right-0.5 top-0.5 border-2 border-white" />
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">

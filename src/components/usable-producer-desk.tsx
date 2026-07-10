@@ -11,8 +11,10 @@ import {
   ClipboardPaste,
   Clock3,
   CopyPlus,
+  FileText,
   FilePlus2,
   GripVertical,
+  ListChecks,
   MessageSquareText,
   MonitorPlay,
   Plus,
@@ -26,6 +28,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { LinkFramework } from "@/components/link-framework"
+import { NowOnAirBanner } from "@/components/now-on-air-banner"
 import { StudioModeSwitch } from "@/components/studio-mode-switch"
 import { AudioLevelMeter, LiveStatusPill, StudioAmbient, StudioSignalStrip } from "@/components/studio-motion"
 import {
@@ -40,10 +43,64 @@ import {
   type StudioItem,
   type StudioShowId,
 } from "@/lib/studio-workspace"
+import { parseShowPlanImport } from "@/lib/show-plan-import"
 import { cn } from "@/lib/utils"
 
 const fieldClass = "min-h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none transition focus:border-brand-indigo/40 focus:ring-2 focus:ring-brand-indigo/10"
 const textareaClass = `${fieldClass} resize-y py-3 leading-6`
+const showPlanPlaceholder = `# SHOW PLAN
+Show:
+Afternoons with Adam
+
+# HOUR 1
+
+Hour name:
+Afternoon Conversation
+
+Feature:
+Afternoon Conversation
+
+## LINK 1
+
+Title:
+Welcome / Set up Afternoon Conversation
+
+Type:
+Link
+
+Feature:
+Afternoon Conversation
+
+Listener-led:
+No
+
+Fallback required:
+No
+
+Context:
+You’re listening to Afternoons with Adam on Premier Gospel...
+
+Recap:
+If you’ve just joined us...
+
+The Moment:
+One clear idea for this link...
+
+Call To Action:
+One clear action only.
+
+Tease Ahead:
+Why should the listener stay?
+
+Fallback If Quiet:
+Not needed.
+
+Producer Notes:
+
+Station Requirement:
+Station ID · Presenter ID · Time check
+
+What Comes Next:`
 
 function Field({
   label,
@@ -69,12 +126,15 @@ export function UsableProducerDesk() {
   const [selectedId, setSelectedId] = useState("")
   const [draggingId, setDraggingId] = useState("")
   const [pasteValue, setPasteValue] = useState("")
+  const [showPlanOpen, setShowPlanOpen] = useState(false)
+  const [showPlanValue, setShowPlanValue] = useState("")
   const [notice, setNotice] = useState("")
 
   const selected = useMemo(
     () => workspace.items.find((item) => item.id === selectedId) ?? workspace.items[0],
     [selectedId, workspace.items]
   )
+  const importedPlan = useMemo(() => parseShowPlanImport(showPlanValue), [showPlanValue])
 
   function save(next = workspace, message = "Saved in this browser.") {
     saveStudioWorkspace(next)
@@ -164,6 +224,29 @@ export function UsableProducerDesk() {
     setPasteValue("")
   }
 
+  function importShowPlan(mode: "append" | "replace") {
+    if (!importedPlan.items.length) {
+      setNotice("Paste a valid show plan with # HOUR and LINK sections first.")
+      return
+    }
+
+    if (mode === "replace" && workspace.items.length && !window.confirm("Replace the current running order with the imported show plan?")) return
+
+    const nextItems = mode === "append" ? [...workspace.items, ...importedPlan.items] : importedPlan.items
+    const nextShowId = importedPlan.showId ?? workspace.showId
+
+    save(
+      {
+        ...workspace,
+        showId: nextShowId,
+        items: nextItems,
+      },
+      `${importedPlan.items.length} imported link${importedPlan.items.length === 1 ? "" : "s"} ${mode === "append" ? "added" : "loaded"} from show plan.`
+    )
+    setSelectedId(importedPlan.items[0]?.id ?? "")
+    setShowPlanOpen(false)
+  }
+
   const show = studioShows[workspace.showId]
   const completed = workspace.items.filter((item) => item.done).length
   const selectedReadiness = selected ? getContextFirstReadiness(selected, show.name) : null
@@ -198,6 +281,7 @@ export function UsableProducerDesk() {
       </header>
 
       <StudioModeSwitch />
+      <NowOnAirBanner />
       <StudioSignalStrip message="Studio pulse · drag items around · framework checks update as you write" />
 
       <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
@@ -242,11 +326,123 @@ export function UsableProducerDesk() {
             </Field>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="rounded-xl" onClick={() => setShowPlanOpen((open) => !open)}><FileText />Import show plan</Button>
             <Button variant="outline" className="rounded-xl" onClick={startBlank}><FilePlus2 />Start blank</Button>
             <Button className="primary-action rounded-xl text-white" onClick={() => startTemplate(workspace.showId)}><CopyPlus />Load show template</Button>
           </div>
         </CardContent>
       </Card>
+
+      {showPlanOpen && (
+        <section className="rounded-[26px] border bg-white p-5 shadow-card sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">Import Show Plan</p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Paste the full ChatGPT show plan</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                BroadcastOS reads # HOUR headings and LINK 1, LINK 2, LINK 3 sections. It does not split by timestamps.
+              </p>
+            </div>
+            <Badge className="w-fit bg-brand-soft text-brand-indigo"><ListChecks />Preview before import</Badge>
+          </div>
+
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <div className="space-y-3">
+              <Field label="Show plan text" hint="Uses # HOUR and LINK headings">
+                <textarea
+                  rows={18}
+                  className={`${textareaClass} font-mono text-xs leading-5`}
+                  value={showPlanValue}
+                  onChange={(event) => setShowPlanValue(event.target.value)}
+                  placeholder={showPlanPlaceholder}
+                />
+              </Field>
+              <div className="flex flex-wrap gap-2">
+                <Button className="primary-action rounded-xl text-white" disabled={!importedPlan.items.length} onClick={() => importShowPlan("replace")}>
+                  <FileText />Replace running order
+                </Button>
+                <Button variant="outline" className="rounded-xl" disabled={!importedPlan.items.length} onClick={() => importShowPlan("append")}>
+                  <Plus />Append to show
+                </Button>
+                <Button variant="ghost" className="rounded-xl" onClick={() => setShowPlanValue("")}>Clear</Button>
+              </div>
+            </div>
+
+            <aside className="space-y-3">
+              <div className="rounded-2xl border bg-muted/20 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Import preview</p>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-2xl font-semibold">{importedPlan.items.length}</p>
+                    <p className="text-[10px] text-muted-foreground">links found</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-2xl font-semibold">{new Set(importedPlan.items.map((item) => item.hour)).size}</p>
+                    <p className="text-[10px] text-muted-foreground">hours</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-2xl font-semibold">{importedPlan.warnings.length}</p>
+                    <p className="text-[10px] text-muted-foreground">warnings</p>
+                  </div>
+                </div>
+                {importedPlan.showId && (
+                  <p className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-muted-foreground">
+                    Detected show: <strong className="text-foreground">{studioShows[importedPlan.showId].name}</strong>
+                  </p>
+                )}
+              </div>
+
+              {importedPlan.warnings.length > 0 && (
+                <div className="max-h-48 overflow-auto rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">
+                  <p className="font-semibold">Needs attention</p>
+                  <ul className="mt-2 list-inside list-disc space-y-1">
+                    {importedPlan.warnings.slice(0, 12).map((warning) => <li key={warning}>{warning}</li>)}
+                  </ul>
+                  {importedPlan.warnings.length > 12 && <p className="mt-2 font-semibold">+ {importedPlan.warnings.length - 12} more warnings</p>}
+                </div>
+              )}
+
+              {showPlanValue && !importedPlan.items.length && (
+                <div className="rounded-2xl border border-destructive/20 bg-red-50 p-4 text-xs leading-5 text-destructive">
+                  <p className="font-semibold">No importable links found yet.</p>
+                  <p className="mt-1">
+                    Make sure the pasted plan has hour headings like <strong>HOUR 1</strong> and link headings like <strong>LINK 1</strong>.
+                    The import buttons unlock once BroadcastOS finds at least one link.
+                  </p>
+                </div>
+              )}
+
+              <div className="max-h-[420px] space-y-2 overflow-auto">
+                {importedPlan.items.slice(0, 18).map((item, index) => (
+                  <div key={item.id} className="rounded-2xl border bg-white p-3.5">
+                    <div className="flex items-start gap-3">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-brand-soft font-mono text-[10px] font-semibold text-brand-indigo">{String(index + 1).padStart(2, "0")}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{item.title}</p>
+                        <p className="mt-1 truncate text-[10px] text-muted-foreground">{item.hour} · {item.featureId}</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <Badge variant="outline" className="text-[9px]">{item.type}</Badge>
+                          {item.fallback && <Badge className="bg-success-soft text-success text-[9px]">Fallback ready</Badge>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {importedPlan.items.length > 18 && (
+                  <p className="rounded-2xl border border-dashed p-3 text-center text-xs text-muted-foreground">
+                    + {importedPlan.items.length - 18} more links will import.
+                  </p>
+                )}
+                {!showPlanValue && (
+                  <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                    Paste a show plan to preview the links here.
+                  </div>
+                )}
+              </div>
+            </aside>
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
         <section className="space-y-3">
@@ -312,7 +508,7 @@ export function UsableProducerDesk() {
                       {item.done ? <Check className="size-3.5" /> : String(index + 1).padStart(2, "0")}
                     </span>
                       <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2"><span className="font-mono text-[10px] text-muted-foreground">{item.time || "No time"}</span><Badge variant="outline" className="text-[9px]">{item.type}</Badge>{item.hour && <Badge variant="outline" className="text-[9px]">{item.hour}</Badge>}</span>
+                      <span className="flex flex-wrap items-center gap-2"><span className="font-mono text-[10px] text-muted-foreground">{item.time || "No time"}</span><Badge variant="outline" className="text-[9px]">{item.type}</Badge>{item.hour && <Badge variant="outline" className="text-[9px]">{item.hour}</Badge>}{item.fallback && <Badge className="bg-success-soft text-success text-[9px]">Fallback</Badge>}</span>
                       <span className="mt-1 block truncate text-sm font-semibold">{item.title}</span>
                       <span className={cn("mt-1 inline-flex items-center gap-1 text-[10px] font-semibold", readiness.ready ? "text-success" : "text-amber-700")}>
                         {readiness.ready ? <Check className="size-3" /> : <CircleAlert className="size-3" />}
@@ -403,6 +599,9 @@ export function UsableProducerDesk() {
                   <Field label="Step 4 · Call To Action"><textarea rows={3} className={textareaClass} value={selected.cta} onChange={(event) => updateItem(selected.id, "cta", event.target.value)} placeholder="One primary listener action only." /></Field>
                   <Field label="Step 5 · Tease Ahead"><textarea rows={3} className={textareaClass} value={selected.tease} onChange={(event) => updateItem(selected.id, "tease", event.target.value)} placeholder="Why should the listener stay?" /></Field>
                 </div>
+                <Field label="Fallback if quiet" hint="Required for listener-led links">
+                  <textarea rows={3} className={textareaClass} value={selected.fallback} onChange={(event) => updateItem(selected.id, "fallback", event.target.value)} placeholder="If messages are low, use this prepared thought instead…" />
+                </Field>
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Field label="Station requirements"><textarea rows={3} className={textareaClass} value={selected.stationRequirement} onChange={(event) => updateItem(selected.id, "stationRequirement", event.target.value)} placeholder="Time check · Station ID · Presenter ID · liner placement…" /></Field>
                   <Field label="Producer notes"><textarea rows={3} className={textareaClass} value={selected.notes} onChange={(event) => updateItem(selected.id, "notes", event.target.value)} placeholder="Timing, audio, pronunciation or handover notes…" /></Field>

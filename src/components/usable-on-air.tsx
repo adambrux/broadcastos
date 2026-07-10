@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { StudioModeSwitch } from "@/components/studio-mode-switch"
-import { AudioLevelMeter, LiveStatusPill, StudioAmbient, StudioSignalStrip } from "@/components/studio-motion"
+import { AudioLevelMeter, LiveStatusPill, StudioAmbient } from "@/components/studio-motion"
 import {
   parseListenerMessages,
   saveStudioWorkspace,
@@ -131,38 +131,54 @@ export function UsableOnAir() {
         <div className="h-1 bg-white/5"><div className="h-full bg-gradient-to-r from-violet-400 to-fuchsia-400" style={{ width: `${progress}%` }} /></div>
       </header>
 
-      <main className="relative mx-auto max-w-[1500px] space-y-4 px-5 pb-28 pt-5 sm:px-8">
-        <StudioSignalStrip dark message="Presenter mode · read top to bottom · next cue stays visible" />
+      <main className="relative mx-auto max-w-[1500px] space-y-4 px-5 pb-28 pt-4 sm:px-8">
+        <section className="rounded-[24px] border border-white/10 bg-white/[0.055] p-4 shadow-[0_18px_70px_rgba(0,0,0,.2)]">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(220px,.8fr)_minmax(220px,.75fr)] lg:items-center">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="bg-red-50 text-red-600"><span className="studio-live-dot" />Current</Badge>
+                <span className="font-mono text-[10px] text-white/40">{current.time || "No fixed time"}</span>
+                <span className="text-[10px] text-white/35">Item {activeIndex + 1} of {workspace.items.length}</span>
+              </div>
+              <h1 className="mt-2 truncate text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">{current.title}</h1>
+              <p className="mt-1 truncate text-xs text-white/45">{current.hour || "No hour set"} · {current.featureId || current.type}</p>
+            </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300/15 bg-amber-300/[0.07] px-4 py-3 text-xs text-amber-100/75">
-          <span>{workspace.mode === "in-studio" ? <><strong className="text-amber-100">Studio companion mode.</strong> Zetta and WhatsApp remain on the in-house systems.</> : <><strong className="text-amber-100">Remote production mode.</strong> Paste WhatsApp messages manually; Zetta is not connected.</>}</span>
-          <Badge className="border-amber-200/15 bg-amber-200/10 text-amber-100">{workspace.mode === "in-studio" ? "In studio" : "Remote"}</Badge>
-        </div>
+            <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/35">Objective</p>
+              <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-white/75">{current.objective || "No objective added"}</p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/35">Up next</p>
+              {next ? (
+                <>
+                  <p className="mt-1 truncate text-sm font-semibold">{next.title}</p>
+                  <p className="mt-1 truncate text-[10px] text-white/40">{next.time || "No fixed time"} · {next.featureId || next.type}</p>
+                </>
+              ) : (
+                <p className="mt-1 text-sm font-semibold">End of show</p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3 text-[10px] text-white/40">
+            <span>{workspace.mode === "in-studio" ? "Studio companion: Zetta and WhatsApp stay on in-house systems." : "Remote mode: paste WhatsApp manually. Zetta is not connected."}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="border-white/10 bg-white/10 text-white">{workspace.mode === "in-studio" ? "In studio" : "Remote"}</Badge>
+              <Badge className="border-white/10 bg-white/10 text-white">{readiness?.ready ? "Framework ready" : `${readiness?.score ?? 0}/${readiness?.total ?? 5} complete`}</Badge>
+              <span className="hidden font-mono text-white/35 sm:inline">{getUkTimeLabel(new Date(clock))} UK</span>
+            </div>
+          </div>
+        </section>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
           <section className="space-y-4">
-            <article className="rounded-[26px] bg-white p-6 text-ink shadow-[0_24px_80px_rgba(0,0,0,.35)] sm:p-8">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-indigo">Current item · {current.time || "No fixed time"}</p><h1 className="mt-2 text-[34px] font-semibold leading-tight tracking-[-0.05em] sm:text-[48px]">{current.title}</h1></div>
-                <Badge className="bg-red-50 text-red-600"><span className="studio-live-dot" />On air</Badge>
-              </div>
-              <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl bg-muted/60 p-4"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Type</p><p className="mt-2 font-semibold">{current.type}</p></div>
-                <div className="rounded-2xl bg-muted/60 p-4"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Target</p><p className="mt-2 font-mono font-semibold">{current.duration || "—"}</p></div>
-                <div className="rounded-2xl bg-muted/60 p-4"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Objective</p><p className="mt-2 text-sm font-semibold leading-5">{current.objective || "No objective added"}</p></div>
-              </div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl bg-muted/60 p-4"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Hour</p><p className="mt-2 font-semibold">{current.hour || "—"}</p></div>
-                <div className="rounded-2xl bg-muted/60 p-4"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Feature ID</p><p className="mt-2 font-semibold">{current.featureId || current.title}</p></div>
-                <div className="rounded-2xl bg-muted/60 p-4"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Framework</p><p className="mt-2 font-semibold">{readiness?.ready ? "Ready" : `${readiness?.score ?? 0}/${readiness?.total ?? 5} complete`}</p></div>
-              </div>
-            </article>
-
-            <article className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4 shadow-[0_24px_80px_rgba(0,0,0,.24)] sm:p-6">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
+            <article className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4 shadow-[0_24px_80px_rgba(0,0,0,.24)] sm:p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-300">BroadcastOS Link Framework</p>
-                  <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">Read from top to bottom</h2>
+                  <h2 className="mt-1 text-xl font-semibold tracking-[-0.04em] sm:text-2xl">Read from top to bottom</h2>
                 </div>
                 <Badge className="border-white/10 bg-white/10 text-white">{readiness?.ready ? "Ready to read" : `${readiness?.score ?? 0}/${readiness?.total ?? 5} complete`}</Badge>
               </div>
@@ -188,6 +204,10 @@ export function UsableOnAir() {
             <div className="rounded-[22px] border border-white/10 bg-white/[0.045] p-5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">Producer notes</p>
               <p className="mt-3 text-sm leading-6 text-white/75">{current.notes || "No producer notes"}</p>
+            </div>
+            <div className="rounded-[22px] border border-emerald-300/20 bg-emerald-300/[0.08] p-5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">Fallback if quiet</p>
+              <p className="mt-3 text-sm font-semibold leading-6 text-emerald-50/85">{current.fallback || "No fallback added. If this link depends on listener messages, add one in Producer Desk."}</p>
             </div>
             <div className="rounded-[22px] border border-amber-300/20 bg-amber-300/[0.08] p-5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-100">Station reminder</p>
