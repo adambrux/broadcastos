@@ -10,6 +10,15 @@ import {
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+type SavedShowSessionSaveRow = {
+  id: string
+  title: string
+  show_id: string
+  show_date: string
+  created_at: string
+  updated_at: string
+}
+
 function normaliseTitle(value: unknown, fallback: string) {
   const title = typeof value === "string" ? value.trim() : ""
   return title || fallback
@@ -97,7 +106,9 @@ export async function POST(request: Request) {
       workspace = EXCLUDED.workspace,
       updated_at = NOW()
     RETURNING id, title, show_id, show_date, created_at, updated_at
-  `
+  ` as SavedShowSessionSaveRow[]
 
-  return Response.json({ session: rows[0], status: cloudSaveStatus() })
+  const session = rows.at(0)
+
+  return Response.json({ session, status: cloudSaveStatus() })
 }
