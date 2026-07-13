@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     RETURNING id, title, show_id, show_date, created_at, updated_at
   ` as SavedShowSessionSaveRow[]
 
-  const session = rows.at(0)
+  const [session] = rows
 
   return Response.json({ session, status: cloudSaveStatus() })
 }
