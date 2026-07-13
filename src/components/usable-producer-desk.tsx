@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ArrowDown,
   ArrowUp,
@@ -9,16 +9,20 @@ import {
   ChevronRight,
   CircleAlert,
   ClipboardPaste,
+  Cloud,
   Clock3,
   CopyPlus,
+  Download,
   FileText,
   FilePlus2,
   GripVertical,
+  KeyRound,
   ListChecks,
   MessageSquareText,
   MonitorPlay,
   Music2,
   Plus,
+  RefreshCcw,
   Save,
   ShieldCheck,
   Trash2,
@@ -43,6 +47,7 @@ import {
   useStudioWorkspace,
   type StudioItem,
   type StudioShowId,
+  type StudioWorkspace,
 } from "@/lib/studio-workspace"
 import { parseShowPlanImport } from "@/lib/show-plan-import"
 import { cn } from "@/lib/utils"
@@ -103,6 +108,23 @@ Station ID · Presenter ID · Time check
 
 What Comes Next:`
 
+const cloudKeyStorageKey = "broadcastos-cloud-save-key"
+
+type CloudSaveStatus = {
+  databaseConfigured: boolean
+  privateKeyConfigured: boolean
+}
+
+type CloudSessionMeta = {
+  id: string
+  title: string
+  show_id: string
+  show_date: string
+  created_at: string
+  updated_at: string
+  item_count: number
+}
+
 function Field({
   label,
   children,
@@ -130,12 +152,140 @@ export function UsableProducerDesk() {
   const [showPlanOpen, setShowPlanOpen] = useState(false)
   const [showPlanValue, setShowPlanValue] = useState("")
   const [notice, setNotice] = useState("")
+  const [cloudKey, setCloudKey] = useState("")
+  const [cloudTitle, setCloudTitle] = useState("")
+  const [cloudSessions, setCloudSessions] = useState<CloudSessionMeta[]>([])
+  const [cloudStatus, setCloudStatus] = useState<CloudSaveStatus | null>(null)
+  const [cloudBusy, setCloudBusy] = useState(false)
+  const [cloudMessage, setCloudMessage] = useState("")
 
   const selected = useMemo(
     () => workspace.items.find((item) => item.id === selectedId) ?? workspace.items[0],
     [selectedId, workspace.items]
   )
   const importedPlan = useMemo(() => parseShowPlanImport(showPlanValue), [showPlanValue])
+
+  useEffect(() => {
+    const storedKey = window.localStorage.getItem(cloudKeyStorageKey) ?? ""
+    setCloudKey(storedKey)
+
+    async function loadInitialCloudSessions() {
+      try {
+        const response = await fetch("/api/show-sessions", {
+          cache: "no-store",
+          headers: storedKey ? { "x-broadcastos-cloud-key": storedKey } : undefined,
+        })
+        const data = await response.json().catch(() => null)
+        if (data?.status) setCloudStatus(data.status)
+        if (response.ok && Array.isArray(data?.sessions)) setCloudSessions(data.sessions)
+      } catch {
+        setCloudMessage("Cloud save is not reachable yet. Local saving still works.")
+      }
+    }
+
+    void loadInitialCloudSessions()
+  }, [])
+
+  function cloudHeaders(key = cloudKey) {
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (key.trim()) headers["x-broadcastos-cloud-key"] = key.trim()
+    return headers
+  }
+
+  function rememberCloudKey(value: string) {
+    setCloudKey(value)
+    window.localStorage.setItem(cloudKeyStorageKey, value)
+  }
+
+  async function refreshCloudSessions(message = "Cloud saved shows refreshed.") {
+    setCloudBusy(true)
+    setCloudMessage("")
+    try {
+      const response = await fetch("/api/show-sessions", {
+        cache: "no-store",
+        headers: cloudKey.trim() ? { "x-broadcastos-cloud-key": cloudKey.trim() } : undefined,
+      })
+      const data = await response.json().catch(() => null)
+      if (data?.status) setCloudStatus(data.status)
+      if (!response.ok) throw new Error(data?.error ?? "Cloud save is not available yet.")
+      setCloudSessions(Array.isArray(data?.sessions) ? data.sessions : [])
+      setCloudMessage(message)
+    } catch (error) {
+      setCloudMessage(error instanceof Error ? error.message : "Cloud save is not available yet.")
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  async function saveCurrentShowOnline() {
+    setCloudBusy(true)
+    setCloudMessage("")
+    try {
+      const response = await fetch("/api/show-sessions", {
+        method: "POST",
+        headers: cloudHeaders(),
+        body: JSON.stringify({
+          title: cloudTitle,
+          workspace,
+        }),
+      })
+      const data = await response.json().catch(() => null)
+      if (data?.status) setCloudStatus(data.status)
+      if (!response.ok) throw new Error(data?.error ?? "Could not save this show online.")
+      setCloudTitle("")
+      await refreshCloudSessions("Show saved online. Open this app on iPad and load it from Saved Shows.")
+    } catch (error) {
+      setCloudMessage(error instanceof Error ? error.message : "Could not save this show online.")
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  async function loadCloudSession(id: string) {
+    if (workspace.items.length && !window.confirm("Replace the current local running order with this saved online show?")) return
+
+    setCloudBusy(true)
+    setCloudMessage("")
+    try {
+      const response = await fetch(`/api/show-sessions/${id}`, {
+        cache: "no-store",
+        headers: cloudKey.trim() ? { "x-broadcastos-cloud-key": cloudKey.trim() } : undefined,
+      })
+      const data = await response.json().catch(() => null)
+      if (data?.status) setCloudStatus(data.status)
+      if (!response.ok) throw new Error(data?.error ?? "Could not load this saved show.")
+
+      const nextWorkspace = data.session.workspace as StudioWorkspace
+      saveStudioWorkspace(nextWorkspace)
+      setSelectedId(nextWorkspace.items?.[0]?.id ?? "")
+      setCloudMessage(`${data.session.title} loaded on this device.`)
+    } catch (error) {
+      setCloudMessage(error instanceof Error ? error.message : "Could not load this saved show.")
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  async function deleteCloudSession(id: string, title: string) {
+    if (!window.confirm(`Delete "${title}" from cloud saved shows?`)) return
+
+    setCloudBusy(true)
+    setCloudMessage("")
+    try {
+      const response = await fetch(`/api/show-sessions/${id}`, {
+        method: "DELETE",
+        headers: cloudKey.trim() ? { "x-broadcastos-cloud-key": cloudKey.trim() } : undefined,
+      })
+      const data = await response.json().catch(() => null)
+      if (data?.status) setCloudStatus(data.status)
+      if (!response.ok) throw new Error(data?.error ?? "Could not delete this saved show.")
+      await refreshCloudSessions("Saved show deleted.")
+    } catch (error) {
+      setCloudMessage(error instanceof Error ? error.message : "Could not delete this saved show.")
+    } finally {
+      setCloudBusy(false)
+    }
+  }
 
   function save(next = workspace, message = "Saved in this browser.") {
     saveStudioWorkspace(next)
@@ -311,6 +461,103 @@ export function UsableProducerDesk() {
         </div>
       )}
 
+      <Card className="studio-card-lift overflow-hidden rounded-[24px] border-brand-indigo/10 bg-gradient-to-br from-white via-white to-brand-soft/35 py-0 shadow-card">
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="bg-ink text-white"><Cloud />Cloud Save V1</Badge>
+                <Badge className={cn(cloudStatus?.databaseConfigured ? "bg-success-soft text-success" : "bg-amber-100 text-amber-800")}>
+                  {cloudStatus?.databaseConfigured ? "Database connected" : "Database not confirmed"}
+                </Badge>
+                <Badge variant="outline">{cloudStatus?.privateKeyConfigured ? "Private key protected" : "No private key set"}</Badge>
+              </div>
+              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">Save this show online and open it on any device.</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Use this when you’ve imported or built a show on your Mac and want the same running order available on iPad or iPhone.
+                Local browser saving still works as a fallback.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" className="rounded-xl" onClick={() => refreshCloudSessions()} disabled={cloudBusy}>
+                <RefreshCcw />Refresh saved shows
+              </Button>
+              <Button className="primary-action rounded-xl text-white" onClick={saveCurrentShowOnline} disabled={cloudBusy || !workspace.items.length || Boolean(cloudStatus?.privateKeyConfigured && !cloudKey.trim())}>
+                <Save />Save online
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.65fr)]">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Cloud save title" hint="Optional">
+                <Input
+                  value={cloudTitle}
+                  onChange={(event) => setCloudTitle(event.target.value)}
+                  placeholder={`${show.name} · ${workspace.date || "today"}`}
+                />
+              </Field>
+              <Field label="Private cloud key" hint="Enter once per device">
+                <div className="relative">
+                  <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="password"
+                    value={cloudKey}
+                    onChange={(event) => rememberCloudKey(event.target.value)}
+                    placeholder={cloudStatus?.privateKeyConfigured ? "Required by Vercel" : "Optional"}
+                    className="pl-9"
+                  />
+                </div>
+              </Field>
+            </div>
+
+            <div className="rounded-2xl border bg-white/70 p-4 text-xs leading-5 text-muted-foreground">
+              <p className="font-semibold text-foreground">How this works</p>
+              <p className="mt-1">
+                Save online here, then open BroadcastOS on another device, enter the same key if needed, refresh saved shows, and load the session.
+              </p>
+              {cloudMessage && <p className="mt-3 rounded-xl bg-brand-soft px-3 py-2 font-semibold text-brand-indigo">{cloudMessage}</p>}
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">Saved Shows</p>
+                <p className="mt-1 text-xs text-muted-foreground">{cloudSessions.length ? `${cloudSessions.length} online session${cloudSessions.length === 1 ? "" : "s"} available` : "No online sessions loaded yet"}</p>
+              </div>
+            </div>
+            {cloudSessions.length > 0 ? (
+              <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                {cloudSessions.map((session) => (
+                  <div key={session.id} className="rounded-2xl border bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{session.title}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">{session.show_date} · {session.item_count} items · updated {new Date(session.updated_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</p>
+                      </div>
+                      <Badge variant="outline" className="shrink-0 text-[9px]">{session.show_id}</Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button size="sm" className="rounded-xl bg-ink text-white hover:bg-ink/90" onClick={() => loadCloudSession(session.id)} disabled={cloudBusy}>
+                        <Download />Load on this device
+                      </Button>
+                      <Button size="sm" variant="outline" className="rounded-xl text-destructive" onClick={() => deleteCloudSession(session.id, session.title)} disabled={cloudBusy}>
+                        <Trash2 />Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-3 rounded-2xl border border-dashed bg-white/70 p-5 text-center text-sm text-muted-foreground">
+                Save the current running order online, or refresh after saving from another device.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="studio-card-lift rounded-[24px] py-0 shadow-card">
         <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-end">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -340,7 +587,7 @@ export function UsableProducerDesk() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">Import Show Plan</p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Paste the full ChatGPT show plan</h2>
+              <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Paste the full Show Plan</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 BroadcastOS reads # HOUR headings and LINK 1, LINK 2, LINK 3 sections. It does not split by timestamps.
               </p>
