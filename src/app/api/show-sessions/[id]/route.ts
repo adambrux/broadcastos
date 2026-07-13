@@ -44,7 +44,7 @@ export async function GET(request: Request, context: RouteContext) {
     LIMIT 1
   ` as SavedShowSessionDetailRow[]
 
-  const session = rows.at(0)
+  const [session] = rows
   if (!session) return Response.json({ error: "Show session not found" }, { status: 404 })
 
   return Response.json({ session, status: cloudSaveStatus() })
