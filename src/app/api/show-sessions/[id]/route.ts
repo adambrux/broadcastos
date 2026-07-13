@@ -12,6 +12,16 @@ type RouteContext = {
   params: Promise<{ id: string }>
 }
 
+type SavedShowSessionDetailRow = {
+  id: string
+  title: string
+  show_id: string
+  show_date: string
+  workspace: unknown
+  created_at: string
+  updated_at: string
+}
+
 export async function GET(request: Request, context: RouteContext) {
   const authResponse = validateCloudSaveRequest(request)
   if (authResponse) return authResponse
@@ -32,11 +42,12 @@ export async function GET(request: Request, context: RouteContext) {
     FROM broadcastos_show_sessions
     WHERE id = ${id}
     LIMIT 1
-  `
+  ` as SavedShowSessionDetailRow[]
 
-  if (!rows[0]) return Response.json({ error: "Show session not found" }, { status: 404 })
+  const session = rows.at(0)
+  if (!session) return Response.json({ error: "Show session not found" }, { status: 404 })
 
-  return Response.json({ session: rows[0], status: cloudSaveStatus() })
+  return Response.json({ session, status: cloudSaveStatus() })
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
