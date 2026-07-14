@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { ShowCountdownBanner } from "@/components/show-countdown-banner"
 import { LiveStatusPill, StudioSignalStrip } from "@/components/studio-motion"
 import {
   DropdownMenu,
@@ -177,6 +178,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <TooltipContent>Microphone ready</TooltipContent>
             </Tooltip>
           </div>}
+          {pathname !== "/broadcast" && <ShowCountdownBanner className="mb-6" />}
           {children}
         </div>
       </main>
