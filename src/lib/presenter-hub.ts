@@ -28,6 +28,11 @@ export type LinerArchiveItem = {
   createdAt: string
 }
 
+export type LinerExtractionOptions = {
+  showName?: string
+  usedInShow?: boolean
+}
+
 export const presenterHubShows = [
   "Afternoons with Adam",
   "Sundays with Adam",
@@ -97,7 +102,7 @@ export const mockLiners: LinerArchiveItem[] = [
   },
 ]
 
-export function weekStartFromDate(value = new Date()) {
+export function weekStartFromDate(value: string | Date = new Date()) {
   const date = typeof value === "string" ? new Date(`${value}T12:00:00`) : new Date(value)
   const day = date.getDay()
   const diff = day === 0 ? -6 : 1 - day
@@ -125,19 +130,53 @@ function normalise(value: string) {
   return value.toLowerCase().replace(/\s+/g, " ").trim()
 }
 
-function sentenceTitle(value: string) {
-  const clean = value.replace(/^(liner|promo|read|campaign|station liner)\s*[:\-–]\s*/i, "").trim()
-  return clean.split(/[.!?]/)[0]?.slice(0, 74).trim() || "Untitled liner"
+function uniqueValues(values: string[]) {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)))
 }
 
-export function extractLikelyLiners(content: string, weekStart: string, sourceImportId: string): LinerArchiveItem[] {
-  const blocks = content
-    .split(/\n\s*\n|(?=^liner\s*:)|(?=^promo\s*:)|(?=^read\s*:)/gim)
+function sentenceTitle(value: string) {
+  const clean = value
+    .replace(/^(liner|promo|read|campaign|station liner|station requirement|station requirements|the moment)\s*[:\-–]\s*/i, "")
+    .replace(/^[-*]\s+/, "")
+    .trim()
+  const firstUsefulLine = clean
+    .split(/\n/)
+    .map((line) => line.replace(/^(title|feature|script|station requirement|station requirements)\s*:\s*/i, "").trim())
+    .find((line) => line && /(liner|promo|read|campaign|youtube|e-?book|ebook|appeal|marketplace|premier plus|guess the judas|truth for life)/i.test(line))
+    ?? clean
+
+  return firstUsefulLine.split(/[.!?]/)[0]?.slice(0, 74).trim() || "Untitled liner"
+}
+
+function candidateBlocks(content: string) {
+  const normalized = content.replace(/\r\n/g, "\n")
+  const largeBlocks = normalized
+    .split(/\n\s*\n|(?=^\s*(?:#{1,6}\s*)?LINK\s+\d+\b)|(?=^\s*(?:#{1,6}\s*)?(?:liner|promo|read|campaign|station liner)\s*:)/gim)
     .map((block) => block.trim())
     .filter(Boolean)
 
+  const usefulLines = normalized
+    .split("\n")
+    .map((line) => line.replace(/^\s*[-*]\s+/, "").trim())
+    .filter((line) => line.length > 8)
+
+  return uniqueValues([...largeBlocks, ...usefulLines])
+}
+
+export function extractLikelyLiners(
+  content: string,
+  weekStart: string,
+  sourceImportId: string,
+  options: LinerExtractionOptions = {}
+): LinerArchiveItem[] {
   const linerWords = /(liner|promo|promotional|read|campaign|youtube|e-?book|ebook|appeal|marketplace|premier plus|guess the judas|truth for life)/i
-  const candidates = blocks.filter((block) => linerWords.test(block)).slice(0, 8)
+  const ignoredWords = /(time check|station id|presenter id|tease ahead|whatsapp|text number|fader|dead air|keyboard clicks|audio level)/i
+  const candidates = candidateBlocks(content)
+    .filter((block) => linerWords.test(block))
+    .filter((block) => !ignoredWords.test(block) || /(guess the judas|truth for life|marketplace|appeal|premier plus|youtube|e-?book|ebook)/i.test(block))
+    .slice(0, 12)
+  const usageDate = new Date().toISOString().slice(0, 10)
+  const showName = options.showName?.trim()
 
   return candidates.map((block, index) => ({
     id: `liner-${sourceImportId}-${index + 1}`,
@@ -145,25 +184,72 @@ export function extractLikelyLiners(content: string, weekStart: string, sourceIm
     script: block,
     weekStart,
     sourceImportId,
-    showsUsed: [],
-    usageCount: 0,
+    showsUsed: options.usedInShow && showName ? [showName] : [],
+    usageCount: options.usedInShow ? 1 : 0,
+    firstUsed: options.usedInShow ? usageDate : undefined,
+    lastUsed: options.usedInShow ? usageDate : undefined,
     status: "Active",
     createdAt: new Date().toISOString(),
   }))
 }
 
-export function createLinerFromText(content: string, weekStart: string, sourceImportId: string): LinerArchiveItem {
+export function createLinerFromText(
+  content: string,
+  weekStart: string,
+  sourceImportId: string,
+  options: LinerExtractionOptions = {}
+): LinerArchiveItem {
+  const usageDate = new Date().toISOString().slice(0, 10)
+  const showName = options.showName?.trim()
+
   return {
     id: `liner-${sourceImportId}-manual`,
     title: sentenceTitle(content),
     script: content.trim(),
     weekStart,
     sourceImportId,
-    showsUsed: [],
-    usageCount: 0,
+    showsUsed: options.usedInShow && showName ? [showName] : [],
+    usageCount: options.usedInShow ? 1 : 0,
+    firstUsed: options.usedInShow ? usageDate : undefined,
+    lastUsed: options.usedInShow ? usageDate : undefined,
     status: "Active",
     createdAt: new Date().toISOString(),
   }
+}
+
+function readStringField(value: unknown, key: string) {
+  if (!value || typeof value !== "object") return ""
+  const field = (value as Record<string, unknown>)[key]
+  return typeof field === "string" ? field : ""
+}
+
+export function serialiseShowPlanForPresenterHub(workspace: {
+  date?: string
+  items?: unknown[]
+}) {
+  const items = Array.isArray(workspace.items) ? workspace.items : []
+
+  return [
+    workspace.date ? `Date: ${workspace.date}` : "",
+    ...items.map((item, index) => [
+      `LINK ${index + 1}`,
+      readStringField(item, "hour") ? `Hour: ${readStringField(item, "hour")}` : "",
+      readStringField(item, "time") ? `Time: ${readStringField(item, "time")}` : "",
+      readStringField(item, "title") ? `Title: ${readStringField(item, "title")}` : "",
+      readStringField(item, "type") ? `Type: ${readStringField(item, "type")}` : "",
+      readStringField(item, "featureId") ? `Feature: ${readStringField(item, "featureId")}` : "",
+      readStringField(item, "objective") ? `Objective: ${readStringField(item, "objective")}` : "",
+      readStringField(item, "duration") ? `Target Duration: ${readStringField(item, "duration")}` : "",
+      readStringField(item, "context") ? `Context: ${readStringField(item, "context")}` : "",
+      readStringField(item, "recap") ? `Recap: ${readStringField(item, "recap")}` : "",
+      readStringField(item, "script") ? `The Moment: ${readStringField(item, "script")}` : "",
+      readStringField(item, "cta") ? `Call To Action: ${readStringField(item, "cta")}` : "",
+      readStringField(item, "tease") ? `Tease Ahead: ${readStringField(item, "tease")}` : "",
+      readStringField(item, "fallback") ? `Fallback If Quiet: ${readStringField(item, "fallback")}` : "",
+      readStringField(item, "stationRequirement") ? `Station Requirement: ${readStringField(item, "stationRequirement")}` : "",
+      readStringField(item, "notes") ? `Producer Notes: ${readStringField(item, "notes")}` : "",
+    ].filter(Boolean).join("\n")),
+  ].filter(Boolean).join("\n\n")
 }
 
 export function countLinerMatches(content: string, liner: Pick<LinerArchiveItem, "title" | "script">) {

@@ -74,6 +74,14 @@ function defaultSource(kind: PresenterHubImportKind): PresenterHubSource {
   return "Manual paste"
 }
 
+function normaliseForMatch(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim()
+}
+
+function mergeShows(existing: string[], incoming: string[]) {
+  return Array.from(new Set([...existing, ...incoming].map((show) => show.trim()).filter(Boolean)))
+}
+
 export async function GET() {
   const sql = getCloudSaveSql()
   if (!sql) {
@@ -144,30 +152,65 @@ export async function POST(request: Request) {
     RETURNING id, title, kind, source_label, week_start, show_name, original_filename, content, created_at
   ` as PresenterHubImportRow[]
 
-  const extracted = kind === "weekly-brief" || kind === "liner"
-    ? extractLikelyLiners(content, weekStart, id)
+  const extracted = kind === "weekly-brief" || kind === "liner" || kind === "show-script"
+    ? extractLikelyLiners(content, weekStart, id, {
+      showName,
+      usedInShow: kind === "show-script",
+    })
     : []
   if (kind === "liner" && extracted.length === 0) {
-    extracted.push(createLinerFromText(content, weekStart, id))
+    extracted.push(createLinerFromText(content, weekStart, id, { showName }))
   }
 
+  const existingRows = await sql`
+    SELECT id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at
+    FROM broadcastos_liner_archive
+    WHERE week_start = ${weekStart}
+  ` as PresenterHubLinerRow[]
+  const existingLiners = existingRows.map(linerFromRow)
+
   for (const liner of extracted) {
-    await sql`
-      INSERT INTO broadcastos_liner_archive (id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
-      VALUES (
-        ${liner.id},
-        ${liner.title},
-        ${liner.script},
-        ${liner.weekStart},
-        ${liner.sourceImportId ?? null},
-        ${JSON.stringify(liner.showsUsed)}::jsonb,
-        ${liner.usageCount},
-        ${liner.firstUsed ?? null},
-        ${liner.lastUsed ?? null},
-        ${liner.status},
-        ${liner.createdAt}
-      )
-    `
+    const linerTitle = normaliseForMatch(liner.title)
+    const linerScript = normaliseForMatch(liner.script)
+    const existing = existingLiners.find((item) => {
+      const title = normaliseForMatch(item.title)
+      const script = normaliseForMatch(item.script)
+      return title === linerTitle || (title.length > 12 && linerScript.includes(title)) || (linerTitle.length > 12 && script.includes(linerTitle))
+    })
+
+    if (existing) {
+      const showsUsed = mergeShows(existing.showsUsed, liner.showsUsed)
+      const extraUsage = liner.showsUsed.some((show) => !existing.showsUsed.includes(show)) ? liner.usageCount : 0
+      const usageCount = Math.max(existing.usageCount, existing.usageCount + extraUsage, liner.usageCount)
+      await sql`
+        UPDATE broadcastos_liner_archive
+        SET
+          shows_used = ${JSON.stringify(showsUsed)}::jsonb,
+          usage_count = ${usageCount},
+          first_used = COALESCE(first_used, ${liner.firstUsed ?? null}),
+          last_used = COALESCE(${liner.lastUsed ?? null}, last_used),
+          status = ${liner.status}
+        WHERE id = ${existing.id}
+      `
+    } else {
+      await sql`
+        INSERT INTO broadcastos_liner_archive (id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
+        VALUES (
+          ${liner.id},
+          ${liner.title},
+          ${liner.script},
+          ${liner.weekStart},
+          ${liner.sourceImportId ?? null},
+          ${JSON.stringify(liner.showsUsed)}::jsonb,
+          ${liner.usageCount},
+          ${liner.firstUsed ?? null},
+          ${liner.lastUsed ?? null},
+          ${liner.status},
+          ${liner.createdAt}
+        )
+      `
+      existingLiners.push(liner)
+    }
   }
 
   const savedImport = importRows.at(0)

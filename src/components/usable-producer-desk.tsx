@@ -37,6 +37,11 @@ import { NowOnAirBanner } from "@/components/now-on-air-banner"
 import { StudioModeSwitch } from "@/components/studio-mode-switch"
 import { AudioLevelMeter, LiveStatusPill, StudioAmbient, StudioSignalStrip } from "@/components/studio-motion"
 import {
+  weekStartFromDate,
+  friendlyImportTitle,
+  type LinerArchiveItem,
+} from "@/lib/presenter-hub"
+import {
   createBlankWorkspace,
   createEmptyStudioItem,
   createTemplateWorkspace,
@@ -292,6 +297,36 @@ export function UsableProducerDesk() {
     setNotice(message)
   }
 
+  async function archiveShowPlanImport(showPlanText: string, showId: StudioShowId, messagePrefix: string) {
+    if (!showPlanText.trim()) return
+
+    try {
+      const showName = studioShows[showId].name
+      const weekStart = weekStartFromDate(workspace.date || new Date())
+      const title = friendlyImportTitle("show-script", showName, weekStart)
+      const response = await fetch("/api/presenter-hub", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "show-script",
+          showName,
+          weekStart,
+          content: showPlanText,
+          title,
+        }),
+      })
+      const data = await response.json().catch(() => null) as { extractedLiners?: LinerArchiveItem[]; error?: string } | null
+      if (!response.ok) throw new Error(data?.error ?? "Presenter Hub archive failed.")
+
+      const linerCount = data?.extractedLiners?.length ?? 0
+      setNotice(linerCount
+        ? `${messagePrefix} Presenter Hub saved it and pulled out ${linerCount} liner${linerCount === 1 ? "" : "s"}.`
+        : `${messagePrefix} Presenter Hub saved the show notes. No liners were detected.`)
+    } catch {
+      setNotice(`${messagePrefix} Show loaded, but Presenter Hub could not archive the liners yet.`)
+    }
+  }
+
   function setDragging(id: string) {
     setDraggingId(id)
   }
@@ -386,14 +421,17 @@ export function UsableProducerDesk() {
     const nextItems = mode === "append" ? [...workspace.items, ...importedPlan.items] : importedPlan.items
     const nextShowId = importedPlan.showId ?? workspace.showId
 
+    const messagePrefix = `${importedPlan.items.length} imported link${importedPlan.items.length === 1 ? "" : "s"} ${mode === "append" ? "added" : "loaded"} from show plan.`
+
     save(
       {
         ...workspace,
         showId: nextShowId,
         items: nextItems,
       },
-      `${importedPlan.items.length} imported link${importedPlan.items.length === 1 ? "" : "s"} ${mode === "append" ? "added" : "loaded"} from show plan.`
+      messagePrefix
     )
+    void archiveShowPlanImport(showPlanValue, nextShowId, messagePrefix)
     setSelectedId(importedPlan.items[0]?.id ?? "")
     setShowPlanOpen(false)
   }
