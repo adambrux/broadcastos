@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -45,6 +46,7 @@ export function UsableOnAir() {
   const progress = workspace.items.length ? ((activeIndex + (current?.done ? 1 : 0)) / workspace.items.length) * 100 : 0
   const show = studioShows[workspace.showId]
   const readiness = current ? getContextFirstReadiness(current, show.name) : null
+  const isLastItem = activeIndex === workspace.items.length - 1
 
   useEffect(() => {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
@@ -152,6 +154,25 @@ export function UsableOnAir() {
       </header>
 
       <main className="relative mx-auto max-w-[1500px] space-y-4 px-5 pb-28 pt-4 sm:px-8">
+        {isLastItem && (
+          <section className="rounded-[24px] border border-amber-300/30 bg-amber-300/[0.12] p-5 shadow-[0_18px_70px_rgba(0,0,0,.22)]">
+            <div className="flex gap-4">
+              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-300 text-ink">
+                <AlertTriangle className="size-5" />
+              </span>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">End of show studio reset</p>
+                <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em] text-white">
+                  After the final link, switch Zetta from Live Assist back to Auto.
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-amber-50/75">
+                  Do this before leaving the studio so the next output is in the correct state.
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="rounded-[24px] border border-white/10 bg-white/[0.055] p-4 shadow-[0_18px_70px_rgba(0,0,0,.2)]">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(220px,.8fr)_minmax(220px,.75fr)] lg:items-center">
             <div className="min-w-0">
