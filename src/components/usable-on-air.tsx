@@ -31,6 +31,7 @@ import {
 } from "@/lib/studio-workspace"
 import { getUkTimeLabel } from "@/lib/schedule-data"
 import { useScheduleClock } from "@/lib/use-schedule-clock"
+import { cn } from "@/lib/utils"
 
 export function UsableOnAir() {
   const workspace = useStudioWorkspace()
