@@ -84,17 +84,15 @@ function storageKey(showId: StudioShowId, date: string) {
   return `${keyPrefix}:${showId}:${date || "undated"}`
 }
 
-function defaultLocation(date: string): LaunchLocation {
-  const parsed = date ? new Date(`${date}T12:00:00`) : new Date()
-  const day = Number.isNaN(parsed.getTime()) ? new Date().getDay() : parsed.getDay()
-  return day === 1 ? "live-london" : "live-london"
+function defaultLocation(): LaunchLocation {
+  return "live-london"
 }
 
 function fallbackState(showId: StudioShowId, date: string): LaunchSequenceState {
   return {
     showId,
     date,
-    location: defaultLocation(date),
+    location: defaultLocation(),
     completedAtByStep: {},
     updatedAt: "",
   }
@@ -139,14 +137,19 @@ export function useLaunchSequence(showId: StudioShowId, date: string) {
     }
   }, [date, showId, snapshot])
 
+  const launchRequired = state.location === "live-london"
+  const preRecorded = state.location === "pre-recorded"
   const completedCount = launchSequenceSteps.filter((step) => state.completedAtByStep[step.id]).length
   const totalCount = launchSequenceSteps.length
+  const complete = preRecorded || (launchRequired && completedCount === totalCount)
 
   function setLocation(location: LaunchLocation) {
+    if (location === "live-birmingham") return
     saveLaunchSequenceState({ ...state, location })
   }
 
   function toggleStep(stepId: LaunchSequenceStepId) {
+    if (!launchRequired) return
     const completedAtByStep = { ...state.completedAtByStep }
     if (completedAtByStep[stepId]) {
       delete completedAtByStep[stepId]
@@ -164,7 +167,9 @@ export function useLaunchSequence(showId: StudioShowId, date: string) {
     state,
     completedCount,
     totalCount,
-    complete: completedCount === totalCount,
+    launchRequired,
+    preRecorded,
+    complete,
     setLocation,
     toggleStep,
     reset,
