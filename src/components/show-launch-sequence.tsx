@@ -30,7 +30,7 @@ function timeLabel(value?: string) {
   return new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
 }
 
-function LaunchSequenceBody({
+export function LaunchSequenceBody({
   showId,
   date,
   dark = false,

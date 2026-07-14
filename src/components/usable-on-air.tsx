@@ -8,16 +8,20 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  LockKeyhole,
   Music2,
   Plus,
   Radio,
+  RotateCcw,
+  ShieldCheck,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { LaunchSequenceIndicator } from "@/components/show-launch-sequence"
+import { LaunchSequenceBody, LaunchSequenceIndicator } from "@/components/show-launch-sequence"
 import { StudioModeSwitch } from "@/components/studio-mode-switch"
 import { AudioLevelMeter, LiveStatusPill, StudioAmbient } from "@/components/studio-motion"
+import { useLaunchSequence } from "@/lib/launch-sequence"
 import {
   parseListenerMessages,
   saveStudioWorkspace,
@@ -34,6 +38,8 @@ export function UsableOnAir() {
   const firstOpen = Math.max(0, workspace.items.findIndex((item) => !item.done))
   const [activeIndex, setActiveIndex] = useState(firstOpen)
   const [pasteValue, setPasteValue] = useState("")
+  const [markingDone, setMarkingDone] = useState(false)
+  const [studioResetConfirmed, setStudioResetConfirmed] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const current = workspace.items[activeIndex]
@@ -47,6 +53,13 @@ export function UsableOnAir() {
   const show = studioShows[workspace.showId]
   const readiness = current ? getContextFirstReadiness(current, show.name) : null
   const isLastItem = activeIndex === workspace.items.length - 1
+  const launchSequence = useLaunchSequence(workspace.showId, workspace.date)
+  const hourItems = useMemo(() => workspace.items.filter((item) => item.hour === current?.hour), [current?.hour, workspace.items])
+  const hourIndex = current ? hourItems.findIndex((item) => item.id === current.id) : -1
+  const hourLinkTotal = hourItems.length || workspace.items.length
+  const hourLinkNumber = hourIndex >= 0 ? hourIndex + 1 : activeIndex + 1
+  const hourLabel = current?.hour || "Current hour"
+  const finalResetRequired = Boolean(current?.done && isLastItem && !studioResetConfirmed)
 
   useEffect(() => {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
@@ -54,16 +67,21 @@ export function UsableOnAir() {
   }, [activeIndex])
 
   function moveToItem(index: number) {
+    setStudioResetConfirmed(false)
     setActiveIndex(Math.min(workspace.items.length - 1, Math.max(0, index)))
   }
 
   function markDone() {
-    if (!current) return
-    saveStudioWorkspace({
-      ...workspace,
-      items: workspace.items.map((item) => item.id === current.id ? { ...item, done: true } : item),
-    })
-    moveToItem(activeIndex + 1)
+    if (!current || markingDone) return
+    setMarkingDone(true)
+    window.setTimeout(() => {
+      saveStudioWorkspace({
+        ...workspace,
+        items: workspace.items.map((item) => item.id === current.id ? { ...item, done: true } : item),
+      })
+      setMarkingDone(false)
+      if (!isLastItem) moveToItem(activeIndex + 1)
+    }, 450)
   }
 
   function addMessages() {
@@ -138,6 +156,59 @@ export function UsableOnAir() {
     <div ref={scrollContainerRef} className="fixed inset-0 z-[45] overflow-auto bg-[#08090d] text-white">
       <StudioAmbient />
       <LaunchSequenceIndicator showId={workspace.showId} date={workspace.date} dark />
+      {!launchSequence.complete && (
+        <div className="fixed inset-0 z-[70] overflow-y-auto bg-[#08090d] p-5 text-white sm:p-8">
+          <StudioAmbient />
+          <div className="mx-auto flex min-h-full max-w-4xl flex-col justify-center">
+            <div className="rounded-[34px] border border-red-300/25 bg-white/[0.045] p-5 shadow-[0_30px_120px_rgba(0,0,0,.45)] sm:p-8">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <Badge className="bg-red-600 text-white"><LockKeyhole />Pre-launch required</Badge>
+                  <h1 className="mt-5 text-4xl font-semibold tracking-[-0.055em] sm:text-6xl">Stop. Check the studio first.</h1>
+                  <p className="mt-4 max-w-2xl text-base leading-7 text-white/60">
+                    On Air is locked until the live London launch sequence is complete, or this show is marked as pre-recorded.
+                  </p>
+                </div>
+                <div className="rounded-[24px] border border-white/10 bg-black/25 p-4 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">Checks complete</p>
+                  <p className="mt-1 font-mono text-4xl font-black">{launchSequence.completedCount}/{launchSequence.totalCount}</p>
+                </div>
+              </div>
+              <div className="mt-7">
+                <LaunchSequenceBody showId={workspace.showId} date={workspace.date} dark />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {finalResetRequired && (
+        <div className="fixed inset-0 z-[75] grid place-items-center overflow-y-auto bg-[#08090d] p-5 text-white sm:p-8">
+          <StudioAmbient />
+          <div className="relative w-full max-w-3xl rounded-[36px] border border-amber-300/30 bg-amber-300/[0.10] p-6 shadow-[0_30px_120px_rgba(0,0,0,.55)] sm:p-9">
+            <Badge className="bg-amber-300 text-ink"><AlertTriangle />End of show reset required</Badge>
+            <h1 className="mt-6 text-4xl font-semibold tracking-[-0.055em] sm:text-6xl">
+              Switch Zetta from Live Assist back to Auto.
+            </h1>
+            <p className="mt-5 text-lg leading-8 text-amber-50/80">
+              Do this before leaving the studio. This screen stays here until you confirm the studio has been reset.
+            </p>
+            <div className="mt-7 rounded-[26px] border border-white/10 bg-black/25 p-5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">Final checks</p>
+              <ul className="mt-4 space-y-3 text-base text-white/80">
+                <li className="flex gap-3"><Check className="mt-0.5 size-5 text-amber-200" />Zetta switched from Live Assist to Auto.</li>
+                <li className="flex gap-3"><Check className="mt-0.5 size-5 text-amber-200" />Mic volume slider brought down.</li>
+                <li className="flex gap-3"><Check className="mt-0.5 size-5 text-amber-200" />Channel 3/beds/cues brought down.</li>
+              </ul>
+            </div>
+            <div className="mt-7">
+              <Button className="h-14 w-full rounded-2xl bg-amber-300 text-base font-semibold text-ink hover:bg-amber-200" onClick={() => setStudioResetConfirmed(true)}>
+                <ShieldCheck />I’ve reset the studio
+              </Button>
+              <p className="mt-3 text-center text-xs font-medium text-amber-50/55">You can exit On Air after confirming this reset.</p>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#08090d]/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
           <div className="flex min-w-0 items-center gap-3">
@@ -145,12 +216,17 @@ export function UsableOnAir() {
               <Image src="/premier-logo.svg" alt="Premier" width={126} height={59} priority className="h-auto w-[46px]" />
               <span className="studio-live-dot absolute right-0 top-0 border-2 border-white" />
             </span>
-            <div className="min-w-0"><p className="truncate text-sm font-semibold">{show.name}</p><p className="text-[10px] text-white/40">Item {activeIndex + 1} of {workspace.items.length}</p></div>
+            <div className="min-w-0"><p className="truncate text-sm font-semibold">{show.name}</p><p className="text-[10px] text-white/40">{hourLabel} · Link {hourLinkNumber}/{hourLinkTotal} · Show {activeIndex + 1}/{workspace.items.length}</p></div>
           </div>
           <div className="hidden items-center gap-4 md:flex"><LiveStatusPill dark label="On Air" /><AudioLevelMeter dark className="h-8" /><StudioModeSwitch dark compact /><div className="text-center"><p className="font-mono text-2xl font-semibold">{getUkTimeLabel(new Date(clock))}</p><p className="text-[9px] uppercase tracking-[0.14em] text-white/35">UK time</p></div></div>
           <Button asChild variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"><Link href="/producer"><ArrowLeft />Exit On Air</Link></Button>
         </div>
-        <div className="h-1 bg-white/5"><div className="h-full bg-gradient-to-r from-violet-400 to-fuchsia-400" style={{ width: `${progress}%` }} /></div>
+        <div className="h-3 overflow-hidden bg-white/5">
+          <div className="relative h-full rounded-r-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-300 transition-all duration-700 ease-out" style={{ width: `${progress}%` }}>
+            <span className="absolute inset-0 animate-pulse bg-white/25" />
+            <span className="absolute right-0 top-1/2 size-4 -translate-y-1/2 translate-x-1/2 rounded-full bg-white shadow-[0_0_24px_rgba(255,255,255,.85)]" />
+          </div>
+        </div>
       </header>
 
       <main className="relative mx-auto max-w-[1500px] space-y-4 px-5 pb-28 pt-4 sm:px-8">
@@ -174,6 +250,22 @@ export function UsableOnAir() {
         )}
 
         <section className="rounded-[24px] border border-white/10 bg-white/[0.055] p-4 shadow-[0_18px_70px_rgba(0,0,0,.2)]">
+          <div className="mb-4 rounded-[24px] border border-white/10 bg-black/20 p-4">
+            <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-200">{hourLabel}</p>
+                <p className="mt-1 text-4xl font-black tracking-[-0.06em] sm:text-5xl">Link {hourLinkNumber}/{hourLinkTotal}</p>
+              </div>
+              <div className="min-w-0 sm:border-l sm:border-white/10 sm:pl-5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">Current screen</p>
+                <p className="mt-1 truncate text-2xl font-semibold tracking-[-0.04em]">{current.title}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-left sm:text-right">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">Whole show</p>
+                <p className="mt-1 font-mono text-2xl font-black">{activeIndex + 1}/{workspace.items.length}</p>
+              </div>
+            </div>
+          </div>
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(220px,.8fr)_minmax(220px,.75fr)] lg:items-center">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -298,7 +390,17 @@ export function UsableOnAir() {
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#08090d]/95 px-5 py-3 backdrop-blur sm:px-8">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3">
           <Button variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={activeIndex === 0} onClick={() => moveToItem(activeIndex - 1)}><ArrowLeft />Previous</Button>
-          <Button className="h-12 rounded-xl bg-white px-7 text-ink hover:bg-white/90" onClick={markDone}><Check />Mark done</Button>
+          <Button
+            className={cn(
+              "h-14 min-w-44 rounded-2xl px-8 text-base font-semibold transition-all duration-300",
+              markingDone ? "scale-110 bg-success text-white shadow-[0_0_45px_rgba(50,180,120,.55)]" : "bg-white text-ink hover:bg-white/90"
+            )}
+            onClick={markDone}
+            disabled={markingDone}
+          >
+            {markingDone ? <RotateCcw className="animate-spin" /> : <Check />}
+            {markingDone ? "Done — moving…" : isLastItem ? "Finish show" : "Mark done"}
+          </Button>
           <Button variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={!next} onClick={() => moveToItem(activeIndex + 1)}>Next<ArrowRight /></Button>
         </div>
       </footer>
