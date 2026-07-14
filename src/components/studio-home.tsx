@@ -56,9 +56,9 @@ export function StudioHome() {
         <Card className="studio-card-lift rounded-[24px] py-0 shadow-card">
           <CardContent className="p-5">
             <span className="grid size-10 place-items-center rounded-xl bg-brand-soft text-brand-indigo"><Newspaper className="size-4" /></span>
-            <h2 className="mt-5 text-lg font-semibold">Newsroom</h2>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">Choose and prepare stories manually. Live RSS and AI fetching are not connected.</p>
-            <Button asChild variant="outline" className="mt-5 w-full rounded-xl"><Link href="/newsroom">Open stories <ArrowRight /></Link></Button>
+            <h2 className="mt-5 text-lg font-semibold">Presenter Hub</h2>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Recall weekly liners, saved briefs, uploads and show script usage.</p>
+            <Button asChild variant="outline" className="mt-5 w-full rounded-xl"><Link href="/newsroom">Open Presenter Hub <ArrowRight /></Link></Button>
           </CardContent>
         </Card>
         <Card className="studio-card-lift rounded-[24px] py-0 shadow-card">

@@ -44,7 +44,7 @@ import { currentUser } from "@/lib/mock-data"
 const navigation = [
   { label: "Today", href: "/today", icon: Gauge },
   { label: "Producer Desk", href: "/producer", icon: SlidersHorizontal },
-  { label: "Newsroom", href: "/newsroom", icon: Newspaper },
+  { label: "Presenter Hub", href: "/newsroom", icon: Newspaper },
   { label: "On Air", href: "/broadcast", icon: Radio },
 ] as const
 
@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <NavigationLinks />
         </div>
         <div className="mb-4">
-          <StudioSignalStrip message="Producer Desk · On Air · Newsroom ready" />
+          <StudioSignalStrip message="Producer Desk · On Air · Presenter Hub ready" />
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
