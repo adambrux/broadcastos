@@ -41,7 +41,7 @@ export const presenterHubKinds: { value: PresenterHubImportKind; label: string; 
   { value: "liner", label: "Single liner", helper: "Paste one station liner directly into the archive." },
   { value: "listener-messages", label: "Listener messages", helper: "Store message batches for recall." },
   { value: "station-notes", label: "Station notes", helper: "General production notes from Premier Gospel." },
-  { value: "file", label: "Uploaded file", helper: "File stored as a friendly record. PDF/Word text extraction comes later." },
+  { value: "file", label: "Text file", helper: "TXT, Markdown and CSV work today. For Word or PDF, paste the useful text instead." },
 ]
 
 export const mockPresenterImports: PresenterHubImport[] = [

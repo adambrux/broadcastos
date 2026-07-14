@@ -56,15 +56,7 @@ function importKindLabel(kind: PresenterHubImportKind) {
 }
 
 async function readFileForImport(file: File) {
-  const textLike = file.type.startsWith("text/") || /\.(txt|md|csv)$/i.test(file.name)
-  if (textLike) return file.text()
-
-  return [
-    `Uploaded file: ${file.name}`,
-    "",
-    "Text extraction for PDF and Word files is not connected yet.",
-    "This record is saved so the file is visible in Presenter Hub, but paste the key text if you want liner extraction today.",
-  ].join("\n")
+  return file.text()
 }
 
 export function NewsroomPage() {
@@ -172,13 +164,13 @@ export function NewsroomPage() {
               </div>
               <h1 className="mt-5 text-[42px] font-semibold tracking-[-0.055em] sm:text-[58px]">Presenter Hub</h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-white/60 sm:text-base">
-                Store weekly briefings, station liners, show scripts and uploads without typing long filenames. BroadcastOS remembers the week, the liner and where it appeared.
+                Store weekly briefings, station liners and show scripts without typing long filenames. Paste is the main workflow for now, with optional text-file import.
               </p>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5">
               <p className="flex items-center gap-2 text-sm font-semibold text-white"><Megaphone className="size-4 text-brand-magenta" />What this does now</p>
               <p className="mt-3 text-sm leading-6 text-white/55">
-                Paste a weekly brief to extract likely liners. Paste a show script to count which archived liners featured that week. PDF/Word text extraction is labelled as future work.
+                Paste a weekly brief to extract likely liners. Paste a show script to count which archived liners featured that week. Word/PDF extraction is a later upgrade.
               </p>
             </div>
           </div>
@@ -205,8 +197,8 @@ export function NewsroomPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-indigo">Simple import</p>
-                <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Paste or upload once</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">No manual filename field. BroadcastOS creates the friendly title automatically.</p>
+                <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Paste first, save once</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">Paste the useful text. BroadcastOS creates the friendly title automatically and stores it centrally.</p>
               </div>
               <span className="grid size-11 place-items-center rounded-2xl bg-brand-soft text-brand-indigo"><Upload className="size-5" /></span>
             </div>
@@ -239,18 +231,18 @@ export function NewsroomPage() {
               value={content}
               onChange={(event) => setContent(event.target.value)}
               spellCheck
-              placeholder="Paste the weekly brief, station liner, or show script here…"
+              placeholder="Paste the weekly brief, station liner, or show script here. This is the best route today…"
               className="mt-4 min-h-[210px] w-full resize-y rounded-2xl border bg-white p-4 text-sm leading-6 outline-none placeholder:text-muted-foreground/45 focus:ring-2 focus:ring-ring"
             />
 
             <label className="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed bg-brand-soft/20 px-4 py-6 text-center transition hover:border-brand-indigo/30">
               <FolderOpen className="size-6 text-brand-indigo" />
-              <span className="mt-2 text-sm font-semibold">{selectedFile ? selectedFile.name : "Choose a file instead"}</span>
-              <span className="mt-1 text-xs text-muted-foreground">Friendly record title is created automatically. Paste text for best liner extraction.</span>
+              <span className="mt-2 text-sm font-semibold">{selectedFile ? selectedFile.name : "Optional: choose a plain text file"}</span>
+              <span className="mt-1 text-xs text-muted-foreground">TXT, Markdown and CSV only for now. For Word or PDF, copy and paste the useful text above.</span>
               <input
                 type="file"
                 className="sr-only"
-                accept=".txt,.md,.csv,.pdf,.doc,.docx"
+                accept=".txt,.md,.csv,text/plain,text/markdown,text/csv"
                 onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
               />
             </label>
@@ -345,7 +337,7 @@ export function NewsroomPage() {
               <Step number="4" title="Look back later" body="Search by liner, week, show or original file without remembering long filenames." />
             </div>
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs leading-5 text-white/45">
-              Manual for now: PDF/Word text extraction and AI extraction are future upgrades. Plain pasted text works best today.
+              Manual for now: paste is the trusted workflow. Word/PDF extraction and AI extraction are future upgrades.
             </div>
           </CardContent>
         </Card>
