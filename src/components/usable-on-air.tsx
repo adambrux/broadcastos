@@ -14,6 +14,7 @@ import {
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { LaunchSequenceIndicator } from "@/components/show-launch-sequence"
 import { StudioModeSwitch } from "@/components/studio-mode-switch"
 import { AudioLevelMeter, LiveStatusPill, StudioAmbient } from "@/components/studio-motion"
 import {
@@ -134,6 +135,7 @@ export function UsableOnAir() {
   return (
     <div ref={scrollContainerRef} className="fixed inset-0 z-[45] overflow-auto bg-[#08090d] text-white">
       <StudioAmbient />
+      <LaunchSequenceIndicator showId={workspace.showId} date={workspace.date} dark />
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#08090d]/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
           <div className="flex min-w-0 items-center gap-3">
