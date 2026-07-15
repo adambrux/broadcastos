@@ -23,6 +23,8 @@ export type StudioItem = {
   cta: string
   tease: string
   listenerLed: boolean
+  /** True only when the link READS responses and carries both Moment variants. Ask-only links stay false. */
+  responseGate: boolean
   next: string
   /**
    * Deprecated in Script Format v2. Kept only so older saved shows can be opened.
@@ -88,6 +90,7 @@ const makeItem = (
   cta: details.cta ?? "",
   tease: details.tease ?? "",
   listenerLed: details.listenerLed ?? false,
+  responseGate: details.responseGate ?? Boolean(details.momentNoResponses?.trim()),
   next: details.next ?? "",
   fallback: details.fallback ?? "",
   stationRequirement: details.stationRequirement ?? "",
@@ -564,7 +567,8 @@ function toFrameworkValues(item: StudioItem): LinkFrameworkValues {
 
 export function getContextFirstReadiness(item: StudioItem, showName?: string) {
   const readiness = validateLinkFramework(toFrameworkValues(item), { showName, featureName: item.featureId || item.title })
-  if (!item.listenerLed) return readiness
+  // Only links that READ responses need the second Moment. Ask-only listener-led links are complete with one.
+  if (!item.responseGate) return readiness
 
   const hasNoResponseMoment = Boolean(item.momentNoResponses?.trim())
   return {
@@ -572,7 +576,7 @@ export function getContextFirstReadiness(item: StudioItem, showName?: string) {
     ready: readiness.ready && hasNoResponseMoment,
     warnings: hasNoResponseMoment
       ? readiness.warnings
-      : [...readiness.warnings, "Listener-led links need The Moment · If No Responses for the Response Gate."],
+      : [...readiness.warnings, "Response Gate links need The Moment · If No Responses."],
   }
 }
 

@@ -902,20 +902,36 @@ export function UsableProducerDesk() {
                   <Field label="Feature ID"><Input value={selected.featureId} onChange={(event) => updateItem(selected.id, "featureId", event.target.value)} placeholder="Afternoon Uplift" /></Field>
                   <Field label="Target duration"><Input value={selected.duration} onChange={(event) => updateItem(selected.id, "duration", event.target.value)} placeholder="02:00" /></Field>
                 </div>
-                <label className="flex items-start gap-3 rounded-2xl border bg-brand-soft/25 p-4">
-                  <input
-                    type="checkbox"
-                    checked={selected.listenerLed}
-                    onChange={(event) => updateItem(selected.id, "listenerLed", event.target.checked)}
-                    className="mt-1 size-4 accent-[var(--brand-indigo)]"
-                  />
-                  <span>
-                    <span className="block text-sm font-semibold">Listener-led / Response Gate</span>
-                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                      Turn this on when the link depends on messages. On Air will ask: “Do you have responses?” and show only the true version.
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <label className="flex items-start gap-3 rounded-2xl border bg-brand-soft/25 p-4">
+                    <input
+                      type="checkbox"
+                      checked={selected.listenerLed}
+                      onChange={(event) => updateItem(selected.id, "listenerLed", event.target.checked)}
+                      className="mt-1 size-4 accent-[var(--brand-indigo)]"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold">Listener-led</span>
+                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                        This link ASKS the audience something. One Moment, always shown in full.
+                      </span>
                     </span>
-                  </span>
-                </label>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-2xl border bg-brand-soft/25 p-4">
+                    <input
+                      type="checkbox"
+                      checked={selected.responseGate}
+                      onChange={(event) => updateItem(selected.id, "responseGate", event.target.checked)}
+                      className="mt-1 size-4 accent-[var(--brand-indigo)]"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold">Response Gate</span>
+                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                        This link READS messages. On Air asks “Do you have responses?” and shows only the true Moment.
+                      </span>
+                    </span>
+                  </label>
+                </div>
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Field label="Step 1 · Context" hint="Shown first in On Air">
                     <textarea rows={4} className={textareaClass} value={selected.context} onChange={(event) => updateItem(selected.id, "context", event.target.value)} placeholder="You’re listening to Afternoons with Adam on Premier Gospel…" />
@@ -927,7 +943,7 @@ export function UsableProducerDesk() {
                 <Field label="Step 3 · The Moment" hint="One clear idea only">
                   <textarea rows={6} className={textareaClass} value={selected.script} onChange={(event) => updateItem(selected.id, "script", event.target.value)} placeholder="Story, listener message, clue, reveal, reflection, scripture, prayer, transition or station liner…" />
                 </Field>
-                {selected.listenerLed && (
+                {selected.responseGate && (
                   <Field label="Response Gate · The Moment if no responses" hint="Replaces old fallback">
                     <textarea rows={6} className={textareaClass} value={selected.momentNoResponses} onChange={(event) => updateItem(selected.id, "momentNoResponses", event.target.value)} placeholder="A full speakable version that works honestly if no listener messages have arrived yet…" />
                   </Field>

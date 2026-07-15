@@ -15,6 +15,7 @@ const fieldAliases: Record<string, string> = {
   cta: "cta",
   feature: "feature",
   "if no responses": "momentNoResponses",
+  "response gate": "responseGate",
   "if responses": "script",
   "fallback if messages are low": "fallback",
   "fallback if quiet": "fallback",
@@ -234,7 +235,9 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
       const type = clean(fields.type) || "Link"
       const feature = clean(fields.feature) || hourFeature
       const listenerLed = isYes(fields.listenerLed) || /interaction|listener/i.test(type)
-      const momentNoResponses = clean(fields.momentNoResponses) || clean(fields.fallback)
+      // Never promote legacy fallback text into the gate: a variant is explicit or absent.
+      const momentNoResponses = isEffectivelyEmpty(fields.momentNoResponses) ? "" : clean(fields.momentNoResponses)
+      const responseGate = isYes(fields.responseGate) || Boolean(momentNoResponses)
       const whatComesNext = clean(fields.whatComesNext)
       const notes = [clean(fields.notes), whatComesNext ? `What comes next: ${whatComesNext}` : ""]
         .filter(Boolean)
@@ -256,6 +259,7 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
         cta: clean(fields.cta),
         tease: clean(fields.tease),
         listenerLed,
+        responseGate,
         next: whatComesNext,
         fallback: "",
         stationRequirement: clean(fields.stationRequirement),
@@ -267,12 +271,12 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
         if (!item[key]) warnings.push(`${item.title}: ${key === "script" ? "The Moment" : key} is missing.`)
       })
 
-      if (listenerLed && isEffectivelyEmpty(momentNoResponses)) {
-        warnings.push(`${item.title}: listener-led links need The Moment · If No Responses for the Response Gate.`)
+      if (responseGate && isEffectivelyEmpty(momentNoResponses)) {
+        warnings.push(`${item.title}: Response Gate links need The Moment · If No Responses.`)
       }
 
-      if (listenerLed && !clean(fields.script).match(/\b(message|messages|response|responses|reply|replies|whatsapp|text|voice note)\b/i)) {
-        warnings.push(`${item.title}: Listener-led is Yes, but The Moment · If Responses does not obviously reference listener responses.`)
+      if (responseGate && !clean(fields.script).match(/\b(message|messages|response|responses|reply|replies|whatsapp|text|voice note)\b/i)) {
+        warnings.push(`${item.title}: Response Gate is on, but The Moment · If Responses does not obviously reference listener responses.`)
       }
 
       if (isLinerLink(item) && !/\[LINER STARTS HERE/i.test(item.script)) {

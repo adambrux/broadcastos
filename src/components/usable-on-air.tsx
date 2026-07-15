@@ -70,7 +70,7 @@ export function UsableOnAir() {
   const hourLabel = current?.hour || "Current hour"
   const finalResetRequired = Boolean(current?.done && isLastItem && !studioResetConfirmed)
   const responseChoice = current ? responseChoices[current.id] : undefined
-  const hasResponseGate = Boolean(current?.listenerLed && current?.momentNoResponses?.trim() && current?.script?.trim())
+  const hasResponseGate = Boolean(current?.responseGate && current?.momentNoResponses?.trim() && current?.script?.trim())
   const responseGateOpen = hasResponseGate && !responseChoice
   const visibleMoment = hasResponseGate && responseChoice === "no"
     ? current?.momentNoResponses ?? ""
