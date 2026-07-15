@@ -2,6 +2,10 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.7 · Presenter Hub repaired · 15 July 2026
+
+- Found and fixed the root cause of the empty Presenter Hub: dates coming back from the database in a different shape than the page expected. Liners and imports now load correctly.
+
 ## v2.6 · Liners that save themselves · 15 July 2026
 
 - Fixed the fault that stopped Presenter Hub loading and showing saved liners. If storage ever has a problem again, the page now says exactly what went wrong instead of showing nothing.

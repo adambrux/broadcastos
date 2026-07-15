@@ -38,6 +38,13 @@ type PresenterHubPayload = {
   liners?: StructuredLinerPayload[]
 }
 
+// Neon returns TIMESTAMPTZ columns as Date objects; the app works in ISO strings.
+function toIso(value: unknown) {
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value === "string") return value
+  return new Date(String(value)).toISOString()
+}
+
 function importFromRow(row: PresenterHubImportRow): PresenterHubImport {
   return {
     id: row.id,
@@ -48,7 +55,7 @@ function importFromRow(row: PresenterHubImportRow): PresenterHubImport {
     showName: row.show_name,
     originalFilename: row.original_filename ?? undefined,
     content: row.content,
-    createdAt: row.created_at,
+    createdAt: toIso(row.created_at),
   }
 }
 
@@ -64,7 +71,7 @@ function linerFromRow(row: PresenterHubLinerRow): LinerArchiveItem {
     firstUsed: row.first_used ?? undefined,
     lastUsed: row.last_used ?? undefined,
     status: row.status as LinerArchiveItem["status"],
-    createdAt: row.created_at,
+    createdAt: toIso(row.created_at),
   }
 }
 
