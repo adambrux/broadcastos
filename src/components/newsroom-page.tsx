@@ -35,6 +35,7 @@ type PresenterHubResponse = {
   imports: PresenterHubImport[]
   liners: LinerArchiveItem[]
   storageMode: string
+  error?: string
 }
 
 const sourceStyles: Record<string, string> = {
@@ -79,6 +80,7 @@ export function NewsroomPage() {
       const data = await response.json() as PresenterHubResponse
       setImports(data.imports ?? [])
       setLiners(data.liners ?? [])
+      if (data.error) setNotice(`Storage problem: ${data.error}`)
     } catch {
       setNotice("Presenter Hub could not load yet. Try refreshing in a moment.")
     } finally {
@@ -105,6 +107,21 @@ export function NewsroomPage() {
   const totalUsage = liners.reduce((sum, liner) => sum + liner.usageCount, 0)
   const latestImport = imports[0]
   const canSave = Boolean(content.trim() || selectedFile)
+
+  async function deleteLiner(liner: LinerArchiveItem) {
+    if (!window.confirm(`Remove "${liner.title}" from the liner archive?`)) return
+    try {
+      const response = await fetch(`/api/presenter-hub?linerId=${encodeURIComponent(liner.id)}`, { method: "DELETE" })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null) as { error?: string } | null
+        throw new Error(data?.error ?? "Could not remove this liner.")
+      }
+      setLiners((current) => current.filter((item) => item.id !== liner.id))
+      setNotice("Liner removed.")
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not remove this liner.")
+    }
+  }
 
   async function saveImport() {
     if (!canSave) return
@@ -260,7 +277,7 @@ export function NewsroomPage() {
               {loading ? (
                 <div className="grid min-h-48 place-items-center rounded-2xl border border-dashed text-sm text-muted-foreground"><Loader2 className="mb-2 size-5 animate-spin" />Loading Presenter Hub…</div>
               ) : visibleLiners.length ? (
-                visibleLiners.map((liner) => <LinerCard key={liner.id} liner={liner} />)
+                visibleLiners.map((liner) => <LinerCard key={liner.id} liner={liner} onDelete={deleteLiner} />)
               ) : (
                 <div className="rounded-2xl border border-dashed py-14 text-center text-sm text-muted-foreground">
                   <Megaphone className="mx-auto mb-3 size-6" />
@@ -340,7 +357,7 @@ function Metric({ label, value, note, dark = false }: { label: string; value: st
   )
 }
 
-function LinerCard({ liner }: { liner: LinerArchiveItem }) {
+function LinerCard({ liner, onDelete }: { liner: LinerArchiveItem; onDelete?: (liner: LinerArchiveItem) => void }) {
   return (
     <article className="rounded-[24px] border bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -348,7 +365,16 @@ function LinerCard({ liner }: { liner: LinerArchiveItem }) {
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={liner.status === "Active" ? "bg-success-soft text-success" : "bg-muted text-muted-foreground"}>{liner.status}</Badge>
             <Badge variant="outline"><CalendarDays />{formatWeekLabel(liner.weekStart)}</Badge>
-            <Badge className="bg-brand-soft text-brand-indigo">{liner.usageCount} use{liner.usageCount === 1 ? "" : "s"}</Badge>
+            <Badge className="bg-brand-soft text-brand-indigo">{liner.usageCount} read{liner.usageCount === 1 ? "" : "s"}</Badge>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(liner)}
+                className="ml-auto rounded-lg px-2 py-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+              >
+                Remove
+              </button>
+            )}
           </div>
           <h3 className="mt-3 text-xl font-semibold tracking-[-0.035em]">{liner.title}</h3>
           <p className="mt-3 whitespace-pre-wrap rounded-2xl bg-muted/25 p-4 text-sm leading-6 text-muted-foreground">{liner.script}</p>

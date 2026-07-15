@@ -2,6 +2,13 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.6 · Liners that save themselves · 15 July 2026
+
+- Fixed the fault that stopped Presenter Hub loading and showing saved liners. If storage ever has a problem again, the page now says exactly what went wrong instead of showing nothing.
+- Liner saving is now driven by the script itself: any link marked as a liner link is saved to Presenter Hub on import, with the read counted for that show day. Importing the same script twice does not double-count.
+- Liner read counts rise day by day as the same liner appears in each day's script.
+- Liners can be removed from the archive with one tap if a bad one sneaks in.
+
 ## v2.5 · The commercial cut · 15 July 2026
 
 The big clean-up. BroadcastOS now looks and behaves like a commercial app a presenter walks up to and uses.

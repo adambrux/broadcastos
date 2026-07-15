@@ -126,6 +126,19 @@ function isLinerLink(item: Pick<StudioItem, "title" | "script">) {
   return /liner link|station liner|\bP[12]\b/i.test(item.title) || /\[LINER STARTS HERE/i.test(item.script)
 }
 
+/** Liner links are marked in the script itself, so archiving them needs no guesswork. */
+function linersFromItems(items: Pick<StudioItem, "title" | "script">[]) {
+  return items.filter(isLinerLink).map((item) => {
+    const marker = item.script.match(/\[LINER STARTS HERE[^\]]*\]\s*([\s\S]*)/i)
+    const script = (marker?.[1] ?? item.script).trim()
+    const title = item.title
+      .replace(/^.*?LINER LINK\s*[·:–-]?\s*/i, "")
+      .replace(/\s*\(whole link\)\s*$/i, "")
+      .trim() || item.title
+    return { title, script: script || title }
+  })
+}
+
 function Field({
   label,
   children,
@@ -292,12 +305,18 @@ export function UsableProducerDesk() {
     setNotice(message)
   }
 
-  async function archiveShowPlanImport(showPlanText: string, showId: StudioShowId, messagePrefix: string) {
+  async function archiveShowPlanImport(
+    showPlanText: string,
+    showId: StudioShowId,
+    messagePrefix: string,
+    liners: { title: string; script: string }[]
+  ) {
     if (!showPlanText.trim()) return
 
     try {
       const showName = studioShows[showId].name
-      const weekStart = weekStartFromDate(workspace.date || new Date())
+      const usageDate = workspace.date || new Date().toISOString().slice(0, 10)
+      const weekStart = weekStartFromDate(usageDate)
       const title = friendlyImportTitle("show-script", showName, weekStart)
       const response = await fetch("/api/presenter-hub", {
         method: "POST",
@@ -306,8 +325,10 @@ export function UsableProducerDesk() {
           kind: "show-script",
           showName,
           weekStart,
+          usageDate,
           content: showPlanText,
           title,
+          liners,
         }),
       })
       const data = await response.json().catch(() => null) as { extractedLiners?: LinerArchiveItem[]; error?: string } | null
@@ -315,10 +336,11 @@ export function UsableProducerDesk() {
 
       const linerCount = data?.extractedLiners?.length ?? 0
       setNotice(linerCount
-        ? `${messagePrefix} Presenter Hub saved it and pulled out ${linerCount} liner${linerCount === 1 ? "" : "s"}.`
-        : `${messagePrefix} Presenter Hub saved the show notes. No liners were detected.`)
-    } catch {
-      setNotice(`${messagePrefix} Show loaded, but Presenter Hub could not archive the liners yet.`)
+        ? `${messagePrefix} ${linerCount} liner${linerCount === 1 ? "" : "s"} saved to Presenter Hub with today's read counted.`
+        : `${messagePrefix} Saved to Presenter Hub. No liner links in this script.`)
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? ` (${error.message})` : ""
+      setNotice(`${messagePrefix} Show loaded, but the liners could not be saved${detail}.`)
     }
   }
 
@@ -420,7 +442,7 @@ export function UsableProducerDesk() {
       },
       messagePrefix
     )
-    void archiveShowPlanImport(showPlanValue, nextShowId, messagePrefix)
+    void archiveShowPlanImport(showPlanValue, nextShowId, messagePrefix, linersFromItems(importedPlan.items))
     setSelectedId(importedPlan.items[0]?.id ?? "")
     setShowPlanOpen(false)
   }
