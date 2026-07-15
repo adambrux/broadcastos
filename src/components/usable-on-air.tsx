@@ -33,6 +33,7 @@ import {
 import { getUkTimeLabel } from "@/lib/schedule-data"
 import { useScheduleClock } from "@/lib/use-schedule-clock"
 import { cn } from "@/lib/utils"
+import { broadcastOSVersion } from "@/lib/version"
 
 function isLinerLink(item?: { title?: string; script?: string }) {
   if (!item) return false
@@ -231,7 +232,13 @@ export function UsableOnAir() {
               <Image src="/premier-logo.svg" alt="Premier" width={126} height={59} priority className="h-auto w-[46px]" />
               <span className="studio-live-dot absolute right-0 top-0 border-2 border-white" />
             </span>
-            <div className="min-w-0"><p className="truncate text-sm font-semibold">{show.name}</p><p className="text-[10px] text-white/40">{hourLabel} · Link {hourLinkNumber}/{hourLinkTotal} · Show {activeIndex + 1}/{workspace.items.length}</p></div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="truncate text-sm font-semibold">{show.name}</p>
+                <span className="rounded-full bg-white/10 px-2 py-0.5 font-mono text-[9px] font-bold text-white/70">v{broadcastOSVersion.code}</span>
+              </div>
+              <p className="text-[10px] text-white/40">{hourLabel} · Link {hourLinkNumber}/{hourLinkTotal} · Show {activeIndex + 1}/{workspace.items.length}</p>
+            </div>
           </div>
           <div className="hidden items-center gap-4 md:flex"><LiveStatusPill dark label="On Air" /><AudioLevelMeter dark className="h-8" /><StudioModeSwitch dark compact /><div className="text-center"><p className="font-mono text-2xl font-semibold">{getUkTimeLabel(new Date(clock))}</p><p className="text-[9px] uppercase tracking-[0.14em] text-white/35">UK time</p></div></div>
           <Button asChild variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"><Link href="/producer"><ArrowLeft />Exit On Air</Link></Button>

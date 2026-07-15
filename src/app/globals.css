@@ -214,13 +214,20 @@ input:focus-visible {
   72% { transform: scaleY(0.58); opacity: 0.78; }
 }
 
+@keyframes broadcastos-splash-load {
+  from { transform: scaleX(0); opacity: 0.78; }
+  72% { transform: scaleX(0.88); opacity: 1; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .studio-ambient::before,
   .studio-ambient::after,
   .studio-scanline,
   .studio-live-dot,
   .studio-ticker,
-  .studio-meter-bar {
+  .studio-meter-bar,
+  [class*="broadcastos-splash-load"] {
     animation: none;
   }
 

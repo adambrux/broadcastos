@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { currentUser } from "@/lib/mock-data"
+import { broadcastOSVersion } from "@/lib/version"
 
 const navigation = [
   { label: "Today", href: "/today", icon: Gauge },
@@ -82,8 +83,28 @@ function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/today" className={cn("inline-flex flex-col items-start", compact ? "gap-1" : "gap-2")} aria-label="Premier BroadcastOS home">
       <Image src="/premier-logo.svg" alt="Premier" width={126} height={59} priority className={cn("h-auto", compact ? "w-[82px]" : "w-[112px]")} />
-      <span className={cn("pl-1 font-semibold tracking-[-0.015em] text-foreground", compact ? "text-[12px]" : "text-[15px]")}>BroadcastOS</span>
+      <span className="flex flex-wrap items-center gap-2 pl-1">
+        <span className={cn("font-semibold tracking-[-0.015em] text-foreground", compact ? "text-[12px]" : "text-[15px]")}>BroadcastOS</span>
+        <span className={cn("rounded-full bg-ink px-2 py-0.5 font-mono font-semibold text-white", compact ? "text-[9px]" : "text-[10px]")}>v{broadcastOSVersion.code}</span>
+      </span>
     </Link>
+  )
+}
+
+function VersionBadge({ dark = false }: { dark?: boolean }) {
+  return (
+    <div className={cn(
+      "flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-xs",
+      dark ? "border-white/10 bg-white/[0.055] text-white/60" : "border-border/70 bg-white/70 text-muted-foreground"
+    )}>
+      <span className="min-w-0">
+        <span className={cn("block truncate font-semibold", dark ? "text-white" : "text-foreground")}>{broadcastOSVersion.label}</span>
+        <span className="block truncate text-[10px]">{broadcastOSVersion.name}</span>
+      </span>
+      <span className={cn("shrink-0 rounded-full px-2 py-1 font-mono text-[10px] font-bold", dark ? "bg-white text-ink" : "bg-ink text-white")}>
+        {broadcastOSVersion.code}
+      </span>
+    </div>
   )
 }
 
@@ -104,6 +125,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="mb-4">
           <StudioSignalStrip message="Producer Desk · On Air · Presenter Hub ready" />
+        </div>
+        <div className="mb-4">
+          <VersionBadge />
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -143,6 +167,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="mt-6">
               <StudioSignalStrip message="Studio signal active" />
             </div>
+            <div className="mt-4">
+              <VersionBadge />
+            </div>
           </SheetContent>
         </Sheet>
       </header>
@@ -178,6 +205,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <TooltipContent>Microphone ready</TooltipContent>
             </Tooltip>
           </div>}
+          {pathname !== "/broadcast" && (
+            <div className="mb-4 flex justify-end">
+              <div className="w-full sm:w-auto sm:min-w-80">
+                <VersionBadge />
+              </div>
+            </div>
+          )}
           {pathname !== "/broadcast" && <ShowCountdownBanner className="mb-6" />}
           {children}
         </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/app-shell";
+import { AppSplashScreen } from "@/components/app-splash-screen";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
@@ -20,6 +21,7 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full">
         <TooltipProvider>
+          <AppSplashScreen />
           <AppShell>{children}</AppShell>
         </TooltipProvider>
       </body>
