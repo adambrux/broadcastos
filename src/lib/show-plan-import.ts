@@ -159,10 +159,32 @@ function parsePreShowPromo(normalized: string): PreShowPromo {
   const body = normalized.slice(promoHeading.index + promoHeading[0].length)
   const fields = parseFields(body)
 
-  return {
+  const fromFields = {
     whatsappStatus: clean(fields.whatsappStatus),
     videoScript: clean(fields.videoScript),
   }
+  if (fromFields.whatsappStatus || fromFields.videoScript) return fromFields
+
+  // Docx exports use headings ("STATUS MESSAGE (written post)" / "VIDEO SCRIPT (…)")
+  // followed by paragraphs, not "label: value" lines. Read those too.
+  return {
+    whatsappStatus: extractHeadingSection(body, /^\s*(?:#{1,6}\s*)?STATUS\s+MESSAGE\b.*$/im, /^\s*(?:#{1,6}\s*)?VIDEO\s+SCRIPT\b/im),
+    videoScript: extractHeadingSection(body, /^\s*(?:#{1,6}\s*)?VIDEO\s+SCRIPT\b.*$/im, /^\s*(?:#{1,6}\s*)?[A-Z][A-Z ·]+$/m),
+  }
+}
+
+function extractHeadingSection(body: string, headingPattern: RegExp, stopPattern: RegExp): string {
+  const heading = body.match(headingPattern)
+  if (!heading || heading.index === undefined) return ""
+  let section = body.slice(heading.index + heading[0].length)
+  const stop = section.match(stopPattern)
+  if (stop && stop.index !== undefined) section = section.slice(0, stop.index)
+  return section
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !/^Post both/i.test(line) && !/^Producer note/i.test(line))
+    .join(" ")
+    .trim()
 }
 
 function warnIfDirectionsLeak(item: StudioItem, warnings: string[]) {
@@ -280,7 +302,11 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
         warnings.push(`${item.title}: this Moment reads listener messages but has NO "If No Responses" version. This looks like an old-format document… re-import the latest Format v2 show plan, or add the second Moment in Producer Desk.`)
       }
 
-      if (responseGate && !clean(fields.script).match(/\b(message|messages|response|responses|reply|replies|whatsapp|text|voice note)\b/i)) {
+      if (
+        responseGate &&
+        !clean(fields.script).match(/\b(message|messages|response|responses|reply|replies|whatsapp|text|voice note)\b/i) &&
+        !/\[(?:read|play|include)\b/i.test(clean(fields.script))
+      ) {
         warnings.push(`${item.title}: Response Gate is on, but The Moment · If Responses does not obviously reference listener responses.`)
       }
 
