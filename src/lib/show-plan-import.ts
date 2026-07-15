@@ -205,7 +205,16 @@ function warnIfDirectionsLeak(item: StudioItem, warnings: string[]) {
 }
 
 export function parseShowPlanImport(value: string): ShowPlanImportResult {
-  const normalized = value.replace(/\r\n/g, "\n").trim()
+  // Clipboard text from Word/Pages carries invisible substitutions that break
+  // label parsing: NBSP variants, vertical tabs for line breaks, lookalike dots,
+  // zero-width characters. Normalize them all before any pattern sees the text.
+  const normalized = value
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u000b\u2028\u2029]/g, "\n")
+    .replace(/[\u00a0\u2007\u202f\u2000-\u200a]/g, " ")
+    .replace(/[\u200b\u200c\u200d\ufeff]/g, "")
+    .replace(/[\u2022\u2027\u2219\u22c5\u30fb]/g, "\u00b7")
+    .trim()
   const warnings: string[] = []
   const items: StudioItem[] = []
 
