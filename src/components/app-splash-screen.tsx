@@ -18,27 +18,32 @@ export function AppSplashScreen() {
     if (alreadySeen) return
 
     setVisible(true)
-    const leaveTimer = window.setTimeout(() => setLeaving(true), 1550)
-    const hideTimer = window.setTimeout(() => {
+  }, [])
+
+  // The splash waits for Adam. It only leaves on an explicit action.
+  function dismiss() {
+    if (leaving) return
+    const storageKey = `broadcastos-splash-${broadcastOSVersion.code}`
+    setLeaving(true)
+    window.setTimeout(() => {
       window.sessionStorage.setItem(storageKey, "seen")
       setVisible(false)
-    }, 2150)
-
-    return () => {
-      window.clearTimeout(leaveTimer)
-      window.clearTimeout(hideTimer)
-    }
-  }, [])
+    }, 600)
+  }
 
   if (!visible) return null
 
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[#08090d] text-white transition-all duration-700",
+        "fixed inset-0 z-[100] grid cursor-pointer place-items-center overflow-hidden bg-[#08090d] text-white transition-all duration-700",
         leaving && "pointer-events-none scale-[1.025] opacity-0 blur-sm"
       )}
-      aria-label={`${broadcastOSVersion.label} loading`}
+      aria-label={`${broadcastOSVersion.label} ready`}
+      role="button"
+      tabIndex={0}
+      onClick={dismiss}
+      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") dismiss() }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_12%,rgba(237,27,152,.24),transparent_30rem),radial-gradient(circle_at_22%_80%,rgba(42,59,172,.32),transparent_34rem)]" />
       <div className="studio-ambient" />
@@ -72,9 +77,15 @@ export function AppSplashScreen() {
           ))}
         </div>
 
-        <div className="mx-auto mt-8 h-2 max-w-sm overflow-hidden rounded-full bg-white/10">
-          <div className="h-full w-full origin-left animate-[broadcastos-splash-load_1.55s_ease-out_forwards] rounded-full bg-gradient-to-r from-violet-300 via-fuchsia-300 to-cyan-200" />
-        </div>
+        <button
+          type="button"
+          onClick={dismiss}
+          className="mx-auto mt-8 flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-7 py-3 text-sm font-semibold tracking-wide text-white transition-colors hover:bg-white/[0.16]"
+        >
+          <Radio className="size-4" />
+          Enter the studio
+        </button>
+        <p className="mt-3 text-xs text-white/40">Tap anywhere when you&apos;re ready</p>
 
         <p className="mt-5 font-mono text-xs uppercase tracking-[0.2em] text-white/35">
           {broadcastOSVersion.label} · build {broadcastOSVersion.build} · {broadcastOSVersion.date}

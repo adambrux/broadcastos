@@ -275,6 +275,11 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
         warnings.push(`${item.title}: Response Gate links need The Moment · If No Responses.`)
       }
 
+      const readsMessages = /\[(?:read|play|include)\b/i.test(item.script) || /\bread the (?:best|messages|responses)\b/i.test(item.script)
+      if (readsMessages && !responseGate) {
+        warnings.push(`${item.title}: this Moment reads listener messages but has NO "If No Responses" version. This looks like an old-format document… re-import the latest Format v2 show plan, or add the second Moment in Producer Desk.`)
+      }
+
       if (responseGate && !clean(fields.script).match(/\b(message|messages|response|responses|reply|replies|whatsapp|text|voice note)\b/i)) {
         warnings.push(`${item.title}: Response Gate is on, but The Moment · If Responses does not obviously reference listener responses.`)
       }
