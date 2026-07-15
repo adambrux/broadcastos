@@ -13,6 +13,8 @@ const fieldAliases: Record<string, string> = {
   "call to action": "cta",
   cta: "cta",
   feature: "feature",
+  "if no responses": "momentNoResponses",
+  "if responses": "script",
   "fallback if messages are low": "fallback",
   "fallback if quiet": "fallback",
   fallback: "fallback",
@@ -23,6 +25,8 @@ const fieldAliases: Record<string, string> = {
   objective: "objective",
   "main content": "script",
   moment: "script",
+  "moment if no responses": "momentNoResponses",
+  "moment if responses": "script",
   "producer notes": "notes",
   recap: "recap",
   "station requirement": "stationRequirement",
@@ -31,6 +35,14 @@ const fieldAliases: Record<string, string> = {
   tease: "tease",
   "tease ahead": "tease",
   "the moment": "script",
+  "the moment if no responses": "momentNoResponses",
+  "the moment if responses": "script",
+  "the moment · if no responses": "momentNoResponses",
+  "the moment · if responses": "script",
+  "the moment - if no responses": "momentNoResponses",
+  "the moment - if responses": "script",
+  "the moment – if no responses": "momentNoResponses",
+  "the moment – if responses": "script",
   title: "title",
   type: "type",
   "what comes next": "whatComesNext",
@@ -141,6 +153,7 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
   const metadata = parseFields(firstHourIndex >= 0 ? normalized.slice(0, firstHourIndex) : "")
   const showId = inferShowId(metadata.show)
   const hourSections = findSections(normalized, hourHeadingPattern)
+  const hasPreShowPromo = /^\s*(?:#{1,6}\s*)?PRE[-\s]?SHOW\s+PROMO\b/im.test(normalized)
 
   if (!hourSections.length) {
     return {
@@ -165,6 +178,10 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
       return
     }
 
+    if (linkSections.length !== 6) {
+      warnings.push(`Hour ${hourNumber} should contain exactly six links. BroadcastOS found ${linkSections.length}.`)
+    }
+
     linkSections.forEach((linkSection, index) => {
       const linkNumber = normalizeNumber(linkSection.header[1])
       const headerTitle = clean(linkSection.header[2])
@@ -172,9 +189,8 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
       const title = clean(fields.title) || headerTitle || `${hourName} · Link ${linkNumber}`
       const type = clean(fields.type) || "Link"
       const feature = clean(fields.feature) || hourFeature
-      const fallback = clean(fields.fallback)
       const listenerLed = isYes(fields.listenerLed) || /interaction|listener/i.test(type)
-      const fallbackRequired = isYes(fields.fallbackRequired) || listenerLed
+      const momentNoResponses = clean(fields.momentNoResponses) || clean(fields.fallback)
       const whatComesNext = clean(fields.whatComesNext)
       const notes = [clean(fields.notes), whatComesNext ? `What comes next: ${whatComesNext}` : ""]
         .filter(Boolean)
@@ -192,9 +208,12 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
         context: clean(fields.context),
         recap: clean(fields.recap),
         script: clean(fields.script),
+        momentNoResponses,
         cta: clean(fields.cta),
         tease: clean(fields.tease),
-        fallback,
+        listenerLed,
+        next: whatComesNext,
+        fallback: "",
         stationRequirement: clean(fields.stationRequirement),
         notes,
         done: false,
@@ -204,13 +223,17 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
         if (!item[key]) warnings.push(`${item.title}: ${key === "script" ? "The Moment" : key} is missing.`)
       })
 
-      if (fallbackRequired && isEffectivelyEmpty(fallback)) {
-        warnings.push(`${item.title}: listener-led links need a prepared fallback if messages are quiet.`)
+      if (listenerLed && isEffectivelyEmpty(momentNoResponses)) {
+        warnings.push(`${item.title}: listener-led links need The Moment · If No Responses for the Response Gate.`)
       }
 
       items.push(item)
     })
   })
+
+  if (!hasPreShowPromo) {
+    warnings.push("No PRE-SHOW PROMO section found. Script Format v2 expects one at the end of every plan.")
+  }
 
   return { items, warnings, metadata, showId }
 }

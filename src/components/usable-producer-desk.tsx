@@ -85,9 +85,6 @@ Afternoon Conversation
 Listener-led:
 No
 
-Fallback required:
-No
-
 Context:
 You’re listening to Afternoons with Adam on Premier Gospel...
 
@@ -97,14 +94,17 @@ If you’ve just joined us...
 The Moment:
 One clear idea for this link...
 
+The Moment · If Responses:
+Use this instead of The Moment when the link depends on listener replies.
+
+The Moment · If No Responses:
+A complete, equally good version if no messages have arrived yet.
+
 Call To Action:
 One clear action only.
 
 Tease Ahead:
 Why should the listener stay?
-
-Fallback If Quiet:
-Not needed.
 
 Producer Notes:
 
@@ -128,6 +128,10 @@ type CloudSessionMeta = {
   created_at: string
   updated_at: string
   item_count: number
+}
+
+function isLinerLink(item: Pick<StudioItem, "title" | "script">) {
+  return /liner link|station liner|\bP[12]\b/i.test(item.title) || /\[LINER STARTS HERE/i.test(item.script)
 }
 
 function Field({
@@ -709,7 +713,9 @@ export function UsableProducerDesk() {
                         <p className="mt-1 truncate text-[10px] text-muted-foreground">{item.hour} · {item.featureId}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <Badge variant="outline" className="text-[9px]">{item.type}</Badge>
-                          {item.fallback && <Badge className="bg-success-soft text-success text-[9px]">Fallback ready</Badge>}
+                          {item.listenerLed && <Badge className="bg-violet-50 text-violet-700 text-[9px]">Response Gate</Badge>}
+                          {item.momentNoResponses && <Badge className="bg-success-soft text-success text-[9px]">No-response moment</Badge>}
+                          {isLinerLink(item) && <Badge className="bg-fuchsia-50 text-fuchsia-700 text-[9px]">Liner</Badge>}
                         </div>
                       </div>
                     </div>
@@ -795,7 +801,7 @@ export function UsableProducerDesk() {
                       {item.done ? <Check className="size-3.5" /> : String(index + 1).padStart(2, "0")}
                     </span>
                       <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2"><span className="font-mono text-[10px] text-muted-foreground">{item.time || "No time"}</span><Badge variant="outline" className="text-[9px]">{item.type}</Badge>{item.hour && <Badge variant="outline" className="text-[9px]">{item.hour}</Badge>}{item.fallback && <Badge className="bg-success-soft text-success text-[9px]">Fallback</Badge>}</span>
+                      <span className="flex flex-wrap items-center gap-2"><span className="font-mono text-[10px] text-muted-foreground">{item.time || "No time"}</span><Badge variant="outline" className="text-[9px]">{item.type}</Badge>{item.hour && <Badge variant="outline" className="text-[9px]">{item.hour}</Badge>}{item.listenerLed && <Badge className="bg-violet-50 text-violet-700 text-[9px]">Gate</Badge>}{isLinerLink(item) && <Badge className="bg-fuchsia-50 text-fuchsia-700 text-[9px]">Liner</Badge>}</span>
                       <span className="mt-1 block truncate text-sm font-semibold">{item.title}</span>
                       <span className={cn("mt-1 inline-flex items-center gap-1 text-[10px] font-semibold", readiness.ready ? "text-success" : "text-amber-700")}>
                         {readiness.ready ? <Check className="size-3" /> : <CircleAlert className="size-3" />}
@@ -871,6 +877,20 @@ export function UsableProducerDesk() {
                   <Field label="Feature ID"><Input value={selected.featureId} onChange={(event) => updateItem(selected.id, "featureId", event.target.value)} placeholder="Afternoon Uplift" /></Field>
                   <Field label="Target duration"><Input value={selected.duration} onChange={(event) => updateItem(selected.id, "duration", event.target.value)} placeholder="02:00" /></Field>
                 </div>
+                <label className="flex items-start gap-3 rounded-2xl border bg-brand-soft/25 p-4">
+                  <input
+                    type="checkbox"
+                    checked={selected.listenerLed}
+                    onChange={(event) => updateItem(selected.id, "listenerLed", event.target.checked)}
+                    className="mt-1 size-4 accent-[var(--brand-indigo)]"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold">Listener-led / Response Gate</span>
+                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                      Turn this on when the link depends on messages. On Air will ask: “Do you have responses?” and show only the true version.
+                    </span>
+                  </span>
+                </label>
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Field label="Step 1 · Context" hint="Shown first in On Air">
                     <textarea rows={4} className={textareaClass} value={selected.context} onChange={(event) => updateItem(selected.id, "context", event.target.value)} placeholder="You’re listening to Afternoons with Adam on Premier Gospel…" />
@@ -882,17 +902,20 @@ export function UsableProducerDesk() {
                 <Field label="Step 3 · The Moment" hint="One clear idea only">
                   <textarea rows={6} className={textareaClass} value={selected.script} onChange={(event) => updateItem(selected.id, "script", event.target.value)} placeholder="Story, listener message, clue, reveal, reflection, scripture, prayer, transition or station liner…" />
                 </Field>
+                {selected.listenerLed && (
+                  <Field label="Response Gate · The Moment if no responses" hint="Replaces old fallback">
+                    <textarea rows={6} className={textareaClass} value={selected.momentNoResponses} onChange={(event) => updateItem(selected.id, "momentNoResponses", event.target.value)} placeholder="A full speakable version that works honestly if no listener messages have arrived yet…" />
+                  </Field>
+                )}
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Field label="Step 4 · Call To Action"><textarea rows={3} className={textareaClass} value={selected.cta} onChange={(event) => updateItem(selected.id, "cta", event.target.value)} placeholder="One primary listener action only." /></Field>
                   <Field label="Step 5 · Tease Ahead"><textarea rows={3} className={textareaClass} value={selected.tease} onChange={(event) => updateItem(selected.id, "tease", event.target.value)} placeholder="Why should the listener stay?" /></Field>
                 </div>
-                <Field label="Fallback if quiet" hint="Required for listener-led links">
-                  <textarea rows={3} className={textareaClass} value={selected.fallback} onChange={(event) => updateItem(selected.id, "fallback", event.target.value)} placeholder="If messages are low, use this prepared thought instead…" />
-                </Field>
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Field label="Station requirements"><textarea rows={3} className={textareaClass} value={selected.stationRequirement} onChange={(event) => updateItem(selected.id, "stationRequirement", event.target.value)} placeholder="Time check · Station ID · Presenter ID · liner placement…" /></Field>
                   <Field label="Producer notes"><textarea rows={3} className={textareaClass} value={selected.notes} onChange={(event) => updateItem(selected.id, "notes", event.target.value)} placeholder="Timing, audio, pronunciation or handover notes…" /></Field>
                 </div>
+                <Field label="What comes next"><textarea rows={2} className={textareaClass} value={selected.next} onChange={(event) => updateItem(selected.id, "next", event.target.value)} placeholder="The next song, feature, item or handover…" /></Field>
               </CardContent>
             </Card>
           ) : (

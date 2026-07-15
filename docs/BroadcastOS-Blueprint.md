@@ -49,6 +49,20 @@ Each link must answer:
 
 Links are incomplete if any of the five sections are empty. BroadcastOS should warn when Context does not mention the show or feature, Recap is missing, Call To Action contains more than one competing listener action, or Tease Ahead is missing.
 
+### Script Format v2 and the Response Gate
+
+From 15 July 2026, BroadcastOS show plans use Script Format v2: a show header, three hours with exactly six links per hour, and a final Pre-Show Promo section.
+
+The old `Fallback If Quiet` field is abolished. Listener-led links use the Response Gate instead:
+
+- `The Moment · If Responses` contains the version where Adam reads real listener messages.
+- `The Moment · If No Responses` contains a complete, equally good version for when no messages have arrived.
+- Context, Recap, Call To Action and Tease Ahead are shared by both versions.
+- On Air asks Adam one question first: “Do you have responses?” YES shows only the response version; NO shows only the no-response version.
+- The unused version is never displayed during live reading.
+
+Liner links are dedicated links, marked by titles such as `LINER LINK · P1` or by `[LINER STARTS HERE · …]` inside The Moment. BroadcastOS visually distinguishes these so Adam sees the gear-change before reading.
+
 ## Module map
 
 | Module | Route | Responsibility |

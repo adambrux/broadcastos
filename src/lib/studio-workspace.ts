@@ -19,8 +19,19 @@ export type StudioItem = {
   context: string
   recap: string
   script: string
+  momentNoResponses: string
   cta: string
   tease: string
+  listenerLed: boolean
+  next: string
+  preShowPromo?: {
+    whatsappStatus?: string
+    videoScript?: string
+  }
+  /**
+   * Deprecated in Script Format v2. Kept only so older saved shows can be opened.
+   * New scripts should use momentNoResponses via the Response Gate.
+   */
   fallback: string
   stationRequirement: string
   notes: string
@@ -71,8 +82,12 @@ const makeItem = (
   context: details.context ?? "",
   recap: details.recap ?? "",
   script: details.script ?? "",
+  momentNoResponses: details.momentNoResponses ?? "",
   cta: details.cta ?? "",
   tease: details.tease ?? "",
+  listenerLed: details.listenerLed ?? false,
+  next: details.next ?? "",
+  preShowPromo: details.preShowPromo,
   fallback: details.fallback ?? "",
   stationRequirement: details.stationRequirement ?? "",
   notes: details.notes ?? "",
@@ -458,8 +473,12 @@ function normalizeItem(item: StudioItem): StudioItem {
     context: item.context ?? "",
     recap: item.recap ?? "",
     script: item.script ?? "",
+    momentNoResponses: item.momentNoResponses ?? item.fallback ?? "",
     cta: item.cta ?? "",
     tease: item.tease ?? "",
+    listenerLed: Boolean(item.listenerLed),
+    next: item.next ?? "",
+    preShowPromo: item.preShowPromo,
     fallback: item.fallback ?? "",
     stationRequirement: item.stationRequirement ?? "",
     notes: item.notes ?? "",
@@ -533,7 +552,17 @@ function toFrameworkValues(item: StudioItem): LinkFrameworkValues {
 }
 
 export function getContextFirstReadiness(item: StudioItem, showName?: string) {
-  return validateLinkFramework(toFrameworkValues(item), { showName, featureName: item.featureId || item.title })
+  const readiness = validateLinkFramework(toFrameworkValues(item), { showName, featureName: item.featureId || item.title })
+  if (!item.listenerLed) return readiness
+
+  const hasNoResponseMoment = Boolean(item.momentNoResponses?.trim())
+  return {
+    ...readiness,
+    ready: readiness.ready && hasNoResponseMoment,
+    warnings: hasNoResponseMoment
+      ? readiness.warnings
+      : [...readiness.warnings, "Listener-led links need The Moment · If No Responses for the Response Gate."],
+  }
 }
 
 export function getStudioItemFrameworkValues(item: StudioItem): LinkFrameworkValues {

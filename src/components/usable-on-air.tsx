@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  CheckCircle2,
   LockKeyhole,
   Music2,
   Plus,
@@ -33,6 +34,11 @@ import { getUkTimeLabel } from "@/lib/schedule-data"
 import { useScheduleClock } from "@/lib/use-schedule-clock"
 import { cn } from "@/lib/utils"
 
+function isLinerLink(item?: { title?: string; script?: string }) {
+  if (!item) return false
+  return /liner link|station liner|\bP[12]\b/i.test(item.title ?? "") || /\[LINER STARTS HERE/i.test(item.script ?? "")
+}
+
 export function UsableOnAir() {
   const workspace = useStudioWorkspace()
   const clock = useScheduleClock()
@@ -41,6 +47,7 @@ export function UsableOnAir() {
   const [pasteValue, setPasteValue] = useState("")
   const [markingDone, setMarkingDone] = useState(false)
   const [studioResetConfirmed, setStudioResetConfirmed] = useState(false)
+  const [responseChoices, setResponseChoices] = useState<Record<string, "yes" | "no">>({})
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const current = workspace.items[activeIndex]
@@ -61,6 +68,13 @@ export function UsableOnAir() {
   const hourLinkNumber = hourIndex >= 0 ? hourIndex + 1 : activeIndex + 1
   const hourLabel = current?.hour || "Current hour"
   const finalResetRequired = Boolean(current?.done && isLastItem && !studioResetConfirmed)
+  const responseChoice = current ? responseChoices[current.id] : undefined
+  const hasResponseGate = Boolean(current?.listenerLed && current?.momentNoResponses?.trim() && current?.script?.trim())
+  const responseGateOpen = hasResponseGate && !responseChoice
+  const visibleMoment = hasResponseGate && responseChoice === "no"
+    ? current?.momentNoResponses ?? ""
+    : current?.script ?? ""
+  const linerLink = isLinerLink(current)
 
   useEffect(() => {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
@@ -73,7 +87,7 @@ export function UsableOnAir() {
   }
 
   function markDone() {
-    if (!current || markingDone) return
+    if (!current || markingDone || responseGateOpen) return
     setMarkingDone(true)
     window.setTimeout(() => {
       saveStudioWorkspace({
@@ -127,10 +141,10 @@ export function UsableOnAir() {
     {
       number: "3",
       label: "The Moment",
-      helper: "One clear idea only",
-      text: current.script || "No main content added yet.",
-      className: "border-white/10 bg-white/[0.045]",
-      labelClassName: "text-white/45",
+      helper: hasResponseGate ? (responseChoice === "yes" ? "If responses" : "If no responses") : "One clear idea only",
+      text: visibleMoment || "No main content added yet.",
+      className: linerLink ? "border-fuchsia-300/30 bg-fuchsia-400/10" : "border-white/10 bg-white/[0.045]",
+      labelClassName: linerLink ? "text-fuchsia-100" : "text-white/45",
       textClassName: "text-[22px] font-medium leading-[1.45] tracking-[-0.02em] sm:text-[28px]",
     },
     {
@@ -271,6 +285,8 @@ export function UsableOnAir() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="bg-red-50 text-red-600"><span className="studio-live-dot" />Current</Badge>
+                {hasResponseGate && <Badge className="bg-violet-200 text-violet-950">Response Gate {responseChoice ? responseChoice.toUpperCase() : "needed"}</Badge>}
+                {linerLink && <Badge className="bg-fuchsia-200 text-fuchsia-950">Liner link</Badge>}
                 <span className="font-mono text-[10px] text-white/40">{current.time || "No fixed time"}</span>
                 <span className="text-[10px] text-white/35">Item {activeIndex + 1} of {workspace.items.length}</span>
               </div>
@@ -314,11 +330,42 @@ export function UsableOnAir() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-300">BroadcastOS Link Framework</p>
                   <h2 className="mt-1 text-xl font-semibold tracking-[-0.04em] sm:text-2xl">Read from top to bottom</h2>
                 </div>
-                <Badge className="border-white/10 bg-white/10 text-white">{readiness?.ready ? "Ready to read" : `${readiness?.score ?? 0}/${readiness?.total ?? 5} complete`}</Badge>
+                <div className="flex flex-wrap gap-2">
+                  {linerLink && <Badge className="bg-fuchsia-200 text-fuchsia-950">Liner gear-change</Badge>}
+                  <Badge className="border-white/10 bg-white/10 text-white">{responseGateOpen ? "Choose response state" : readiness?.ready ? "Ready to read" : `${readiness?.score ?? 0}/${readiness?.total ?? 5} complete`}</Badge>
+                </div>
               </div>
 
-              <div className="space-y-3">
-                {liveSteps.map((step) => (
+              {responseGateOpen ? (
+                <div className="rounded-[28px] border border-violet-300/35 bg-violet-400/[0.13] p-6 text-center sm:p-8">
+                  <Badge className="bg-violet-200 text-violet-950"><AlertTriangle />Response Gate</Badge>
+                  <h3 className="mx-auto mt-5 max-w-3xl text-4xl font-semibold tracking-[-0.055em] sm:text-6xl">
+                    Do you have listener responses?
+                  </h3>
+                  <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-violet-50/70">
+                    Choose what is true. BroadcastOS will only show the matching version of The Moment.
+                  </p>
+                  <div className="mt-7 grid gap-4 sm:grid-cols-2">
+                    <Button
+                      className="h-24 rounded-[26px] bg-emerald-300 text-2xl font-black text-ink hover:bg-emerald-200"
+                      onClick={() => setResponseChoices((choices) => ({ ...choices, [current.id]: "yes" }))}
+                    >
+                      <CheckCircle2 className="size-7" />YES
+                    </Button>
+                    <Button
+                      className="h-24 rounded-[26px] bg-white text-2xl font-black text-ink hover:bg-white/90"
+                      onClick={() => setResponseChoices((choices) => ({ ...choices, [current.id]: "no" }))}
+                    >
+                      <ArrowRight className="size-7" />NO
+                    </Button>
+                  </div>
+                  <p className="mt-5 text-xs font-medium text-violet-50/45">
+                    The unused Moment will stay hidden. One link, one script, zero mid-read decisions.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {liveSteps.map((step) => (
                   <section key={step.number} className={`rounded-[24px] border p-5 sm:p-6 ${step.className}`}>
                     <div className="flex gap-4">
                       <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white text-base font-semibold text-ink sm:size-12">{step.number}</span>
@@ -331,21 +378,22 @@ export function UsableOnAir() {
                       </div>
                     </div>
                   </section>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </article>
 
             <div className="rounded-[22px] border border-white/10 bg-white/[0.045] p-5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">Producer notes</p>
               <p className="mt-3 text-sm leading-6 text-white/75">{current.notes || "No producer notes"}</p>
             </div>
-            <div className="rounded-[22px] border border-emerald-300/20 bg-emerald-300/[0.08] p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">Fallback if quiet</p>
-              <p className="mt-3 text-sm font-semibold leading-6 text-emerald-50/85">{current.fallback || "No fallback added. If this link depends on listener messages, add one in Producer Desk."}</p>
-            </div>
             <div className="rounded-[22px] border border-amber-300/20 bg-amber-300/[0.08] p-5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-100">Station reminder</p>
               <p className="mt-3 text-sm font-semibold leading-6 text-amber-50/85">{current.stationRequirement || "No station requirement"}</p>
+            </div>
+            <div className="rounded-[22px] border border-cyan-300/20 bg-cyan-300/[0.08] p-5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-100">What comes next</p>
+              <p className="mt-3 text-sm font-semibold leading-6 text-cyan-50/85">{current.next || next?.title || "No next item added"}</p>
             </div>
           </section>
 
@@ -397,10 +445,10 @@ export function UsableOnAir() {
               markingDone ? "scale-110 bg-success text-white shadow-[0_0_45px_rgba(50,180,120,.55)]" : "bg-white text-ink hover:bg-white/90"
             )}
             onClick={markDone}
-            disabled={markingDone}
+            disabled={markingDone || responseGateOpen}
           >
             {markingDone ? <RotateCcw className="animate-spin" /> : <Check />}
-            {markingDone ? "Done — moving…" : isLastItem ? "Finish show" : "Mark done"}
+            {responseGateOpen ? "Choose YES or NO first" : markingDone ? "Done — moving…" : isLastItem ? "Finish show" : "Mark done"}
           </Button>
           <Button variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={!next} onClick={() => moveToItem(activeIndex + 1)}>Next<ArrowRight /></Button>
         </div>

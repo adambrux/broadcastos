@@ -238,15 +238,19 @@ export function serialiseShowPlanForPresenterHub(workspace: {
       readStringField(item, "title") ? `Title: ${readStringField(item, "title")}` : "",
       readStringField(item, "type") ? `Type: ${readStringField(item, "type")}` : "",
       readStringField(item, "featureId") ? `Feature: ${readStringField(item, "featureId")}` : "",
+      typeof (item as Record<string, unknown>)?.listenerLed === "boolean" ? `Listener-led: ${(item as Record<string, unknown>).listenerLed ? "Yes" : "No"}` : "",
       readStringField(item, "objective") ? `Objective: ${readStringField(item, "objective")}` : "",
       readStringField(item, "duration") ? `Target Duration: ${readStringField(item, "duration")}` : "",
       readStringField(item, "context") ? `Context: ${readStringField(item, "context")}` : "",
       readStringField(item, "recap") ? `Recap: ${readStringField(item, "recap")}` : "",
-      readStringField(item, "script") ? `The Moment: ${readStringField(item, "script")}` : "",
+      readStringField(item, "momentNoResponses")
+        ? `The Moment · If Responses: ${readStringField(item, "script")}`
+        : readStringField(item, "script") ? `The Moment: ${readStringField(item, "script")}` : "",
+      readStringField(item, "momentNoResponses") ? `The Moment · If No Responses: ${readStringField(item, "momentNoResponses")}` : "",
       readStringField(item, "cta") ? `Call To Action: ${readStringField(item, "cta")}` : "",
       readStringField(item, "tease") ? `Tease Ahead: ${readStringField(item, "tease")}` : "",
-      readStringField(item, "fallback") ? `Fallback If Quiet: ${readStringField(item, "fallback")}` : "",
       readStringField(item, "stationRequirement") ? `Station Requirement: ${readStringField(item, "stationRequirement")}` : "",
+      readStringField(item, "next") ? `What Comes Next: ${readStringField(item, "next")}` : "",
       readStringField(item, "notes") ? `Producer Notes: ${readStringField(item, "notes")}` : "",
     ].filter(Boolean).join("\n")),
   ].filter(Boolean).join("\n\n")
