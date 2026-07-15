@@ -78,14 +78,16 @@ export function ShowCountdownBanner({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 lg:flex-col">
-          <Button asChild className={cn("h-11 rounded-xl px-4", dark ? "bg-white text-ink hover:bg-white/90" : "primary-action text-white")}>
-            <Link href="/broadcast"><Headphones />On Air</Link>
-          </Button>
-          <Button asChild variant="outline" className={cn("h-11 rounded-xl px-4", dark && "border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white")}>
-            <Link href="/producer"><SlidersHorizontal />Producer Desk</Link>
-          </Button>
-        </div>
+        {!compact && (
+          <div className="flex flex-wrap gap-2 lg:flex-col">
+            <Button asChild className={cn("h-11 rounded-xl px-4", dark ? "bg-white text-ink hover:bg-white/90" : "primary-action text-white")}>
+              <Link href="/broadcast"><Headphones />On Air</Link>
+            </Button>
+            <Button asChild variant="outline" className={cn("h-11 rounded-xl px-4", dark && "border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white")}>
+              <Link href="/producer"><SlidersHorizontal />Produce</Link>
+            </Button>
+          </div>
+        )}
       </div>
     </section>
   )

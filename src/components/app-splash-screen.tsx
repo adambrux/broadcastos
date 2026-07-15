@@ -1,34 +1,46 @@
 "use client"
 
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Radio, Sparkles } from "lucide-react"
+import { Radio, SlidersHorizontal, X } from "lucide-react"
 
 import { broadcastOSVersion } from "@/lib/version"
 import { cn } from "@/lib/utils"
 
+const openEventName = "broadcastos-open-splash"
+
+/** Re-opens the splash navigation from anywhere (the Premier logo uses this). */
+export function openAppSplash() {
+  window.dispatchEvent(new Event(openEventName))
+}
+
 export function AppSplashScreen() {
+  const router = useRouter()
   const [visible, setVisible] = useState(false)
   const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
     const storageKey = `broadcastos-splash-${broadcastOSVersion.code}`
-    const alreadySeen = window.sessionStorage.getItem(storageKey)
+    if (!window.sessionStorage.getItem(storageKey)) setVisible(true)
 
-    if (alreadySeen) return
-
-    setVisible(true)
+    const reopen = () => {
+      setLeaving(false)
+      setVisible(true)
+    }
+    window.addEventListener(openEventName, reopen)
+    return () => window.removeEventListener(openEventName, reopen)
   }, [])
 
-  // The splash waits for Adam. It only leaves on an explicit action.
-  function dismiss() {
+  function close(destination?: string) {
     if (leaving) return
-    const storageKey = `broadcastos-splash-${broadcastOSVersion.code}`
+    window.sessionStorage.setItem(`broadcastos-splash-${broadcastOSVersion.code}`, "seen")
     setLeaving(true)
+    if (destination) router.push(destination)
     window.setTimeout(() => {
-      window.sessionStorage.setItem(storageKey, "seen")
       setVisible(false)
-    }, 600)
+      setLeaving(false)
+    }, 550)
   }
 
   if (!visible) return null
@@ -36,59 +48,66 @@ export function AppSplashScreen() {
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[100] grid cursor-pointer place-items-center overflow-hidden bg-[#08090d] text-white transition-all duration-700",
-        leaving && "pointer-events-none scale-[1.025] opacity-0 blur-sm"
+        "fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-[#08090d] text-white transition-all duration-500",
+        leaving && "pointer-events-none scale-[1.02] opacity-0 blur-sm"
       )}
-      aria-label={`${broadcastOSVersion.label} ready`}
-      role="button"
-      tabIndex={0}
-      onClick={dismiss}
-      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") dismiss() }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="BroadcastOS"
+      onKeyDown={(event) => { if (event.key === "Escape") close() }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_12%,rgba(237,27,152,.24),transparent_30rem),radial-gradient(circle_at_22%_80%,rgba(42,59,172,.32),transparent_34rem)]" />
       <div className="studio-ambient" />
       <div className="studio-scanline" />
 
-      <div className="relative mx-auto w-full max-w-3xl px-6 text-center">
-        <div className="mx-auto grid size-28 place-items-center rounded-[2rem] border border-white/10 bg-white shadow-[0_24px_90px_rgba(237,27,152,.22)]">
-          <Image src="/premier-logo.svg" alt="Premier" width={126} height={59} priority className="w-[86px]" />
+      <button
+        type="button"
+        onClick={() => close()}
+        aria-label="Close"
+        className="absolute right-5 top-5 z-10 grid size-11 place-items-center rounded-full border border-white/15 bg-white/[0.06] text-white/70 transition-colors hover:bg-white/[0.14] hover:text-white"
+      >
+        <X className="size-5" />
+      </button>
+
+      <div className="relative mx-auto w-full max-w-3xl px-6 py-10 text-center">
+        <div className="mx-auto grid size-24 place-items-center rounded-[1.8rem] border border-white/10 bg-white shadow-[0_24px_90px_rgba(237,27,152,.22)]">
+          <Image src="/premier-logo.svg" alt="Premier" width={126} height={59} priority className="w-[76px]" />
         </div>
 
-        <div className="mt-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.065] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
-          <span className="studio-live-dot" />
-          Studio system starting
+        <h1 className="mt-7 text-5xl font-semibold tracking-[-0.07em] sm:text-6xl">BroadcastOS</h1>
+        <p className="mt-3 text-base font-medium text-white/55">Where do you want to go?</p>
+
+        <div className="mx-auto mt-9 grid max-w-2xl gap-4 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => close("/producer")}
+            className="group rounded-[28px] border border-white/12 bg-white/[0.055] p-7 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/40 hover:bg-violet-400/[0.12]"
+          >
+            <span className="grid size-12 place-items-center rounded-2xl bg-white/10 text-violet-200 transition-colors group-hover:bg-white group-hover:text-ink">
+              <SlidersHorizontal className="size-5" />
+            </span>
+            <span className="mt-5 block text-2xl font-semibold tracking-[-0.03em]">Produce</span>
+            <span className="mt-2 block text-sm leading-6 text-white/50">Plan the show, import the script and get everything ready.</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => close("/broadcast")}
+            className="group rounded-[28px] border border-white/12 bg-white p-7 text-left text-ink transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_80px_rgba(237,27,152,.3)]"
+          >
+            <span className="grid size-12 place-items-center rounded-2xl bg-ink text-white">
+              <Radio className="size-5" />
+            </span>
+            <span className="mt-5 flex items-center gap-2 text-2xl font-semibold tracking-[-0.03em]">
+              Go On Air
+              <span className="studio-live-dot" aria-hidden="true" />
+            </span>
+            <span className="mt-2 block text-sm leading-6 text-ink/60">Open the saved script and read the show from the screen.</span>
+          </button>
         </div>
 
-        <h1 className="mt-5 text-5xl font-semibold tracking-[-0.07em] sm:text-7xl">
-          BroadcastOS
-        </h1>
-        <p className="mt-3 text-base font-medium text-white/58 sm:text-lg">
-          {broadcastOSVersion.name}
-        </p>
-
-        <div className="mx-auto mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
-          {["Producer Desk", "Response Gate", "On Air"].map((item, index) => (
-            <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
-              <div className="mx-auto mb-3 grid size-8 place-items-center rounded-xl bg-white/10">
-                {index === 1 ? <Sparkles className="size-4 text-fuchsia-200" /> : <Radio className="size-4 text-violet-200" />}
-              </div>
-              <p className="text-xs font-semibold text-white/75">{item}</p>
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={dismiss}
-          className="mx-auto mt-8 flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-7 py-3 text-sm font-semibold tracking-wide text-white transition-colors hover:bg-white/[0.16]"
-        >
-          <Radio className="size-4" />
-          Enter the studio
-        </button>
-        <p className="mt-3 text-xs text-white/40">Tap anywhere when you&apos;re ready</p>
-
-        <p className="mt-5 font-mono text-xs uppercase tracking-[0.2em] text-white/35">
-          {broadcastOSVersion.label} · build {broadcastOSVersion.build} · {broadcastOSVersion.date}
+        <p className="mt-9 font-mono text-xs uppercase tracking-[0.2em] text-white/30">
+          {broadcastOSVersion.label} · {broadcastOSVersion.date}
         </p>
       </div>
     </div>

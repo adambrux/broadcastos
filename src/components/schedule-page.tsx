@@ -1,10 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { CalendarDays, Clock3, ExternalLink, Radio, UserRound } from "lucide-react"
+import { Clock3, ExternalLink, Radio, UserRound } from "lucide-react"
 import { useState } from "react"
 
-import { NowOnAirBanner } from "@/components/now-on-air-banner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,9 +12,7 @@ import {
   formatScheduleDay,
   getScheduleState,
   premierGospelSchedule,
-  scheduleConnectionLabel,
   scheduleDays,
-  scheduleSourceLabel,
   type ScheduleDay,
 } from "@/lib/schedule-data"
 import { scheduleServerClock, useScheduleClock } from "@/lib/use-schedule-clock"
@@ -73,14 +70,8 @@ export function SchedulePage() {
               A clear weekly view of what is live, what follows and where Adam’s shows sit across Premier Gospel.
             </p>
           </div>
-          <div className="rounded-2xl border bg-white/70 p-4 text-xs text-muted-foreground">
-            <p className="flex items-center gap-2 font-semibold text-foreground"><CalendarDays className="size-4 text-brand-indigo" />{scheduleSourceLabel}</p>
-            <p className="mt-1.5">{scheduleConnectionLabel}</p>
-          </div>
         </div>
       </header>
-
-      <NowOnAirBanner />
 
       <Tabs defaultValue="day" className="flex-col gap-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

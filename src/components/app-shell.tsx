@@ -4,21 +4,18 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  Bell,
+  BarChart3,
   ChevronDown,
   Gauge,
-  Headphones,
   Menu,
-  Mic2,
   Newspaper,
   Radio,
-  Search,
   SlidersHorizontal,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { ShowCountdownBanner } from "@/components/show-countdown-banner"
-import { LiveStatusPill, StudioSignalStrip } from "@/components/studio-motion"
+import { NowOnAirBanner } from "@/components/now-on-air-banner"
+import { openAppSplash } from "@/components/app-splash-screen"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,19 +31,17 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { isAdamShowLive } from "@/lib/schedule-data"
+import { scheduleServerClock, useScheduleClock } from "@/lib/use-schedule-clock"
 import { cn } from "@/lib/utils"
 import { currentUser } from "@/lib/mock-data"
 import { broadcastOSVersion } from "@/lib/version"
 
 const navigation = [
   { label: "Today", href: "/today", icon: Gauge },
-  { label: "Producer Desk", href: "/producer", icon: SlidersHorizontal },
+  { label: "Produce", href: "/producer", icon: SlidersHorizontal },
   { label: "Presenter Hub", href: "/newsroom", icon: Newspaper },
+  { label: "Insights", href: "/insights", icon: BarChart3 },
   { label: "On Air", href: "/broadcast", icon: Radio },
 ] as const
 
@@ -81,30 +76,40 @@ function NavigationLinks({ mobile = false }: { mobile?: boolean }) {
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/today" className={cn("inline-flex flex-col items-start", compact ? "gap-1" : "gap-2")} aria-label="Premier BroadcastOS home">
+    <button
+      type="button"
+      onClick={openAppSplash}
+      className={cn("inline-flex flex-col items-start text-left", compact ? "gap-1" : "gap-2")}
+      aria-label="Open BroadcastOS menu"
+    >
       <Image src="/premier-logo.svg" alt="Premier" width={126} height={59} priority className={cn("h-auto", compact ? "w-[82px]" : "w-[112px]")} />
       <span className="flex flex-wrap items-center gap-2 pl-1">
         <span className={cn("font-semibold tracking-[-0.015em] text-foreground", compact ? "text-[12px]" : "text-[15px]")}>BroadcastOS</span>
         <span className={cn("rounded-full bg-ink px-2 py-0.5 font-mono font-semibold text-white", compact ? "text-[9px]" : "text-[10px]")}>v{broadcastOSVersion.code}</span>
       </span>
-    </Link>
+    </button>
   )
 }
 
-function VersionBadge({ dark = false }: { dark?: boolean }) {
+export function StudioLivePill({ dark = false, className }: { dark?: boolean; className?: string }) {
+  const clock = useScheduleClock()
+  const ready = clock !== scheduleServerClock
+  const live = ready && isAdamShowLive(new Date(clock))
+
   return (
-    <div className={cn(
-      "flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-xs",
-      dark ? "border-white/10 bg-white/[0.055] text-white/60" : "border-border/70 bg-white/70 text-muted-foreground"
-    )}>
-      <span className="min-w-0">
-        <span className={cn("block truncate font-semibold", dark ? "text-white" : "text-foreground")}>{broadcastOSVersion.label}</span>
-        <span className="block truncate text-[10px]">{broadcastOSVersion.name} · build {broadcastOSVersion.build}</span>
-      </span>
-      <span className={cn("shrink-0 rounded-full px-2 py-1 font-mono text-[10px] font-bold", dark ? "bg-white text-ink" : "bg-ink text-white")}>
-        {broadcastOSVersion.code}
-      </span>
-    </div>
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
+        live
+          ? "border-red-200 bg-red-50 text-red-700"
+          : dark ? "border-white/10 bg-white/[0.05] text-white/40" : "border-border/70 bg-muted/40 text-muted-foreground",
+        live && dark && "border-red-300/30 bg-red-500/15 text-red-200",
+        className
+      )}
+    >
+      {live && <span className="studio-live-dot" aria-hidden="true" />}
+      {live ? "On air" : "Off air"}
+    </span>
   )
 }
 
@@ -117,17 +122,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="px-2">
           <Brand />
           <div className="mt-4">
-            <LiveStatusPill label="Studio alive" className="w-full justify-center" />
+            <StudioLivePill className="w-full justify-center" />
           </div>
         </div>
         <div className="mt-9 min-h-0 flex-1 overflow-y-auto pr-1">
           <NavigationLinks />
-        </div>
-        <div className="mb-4">
-          <StudioSignalStrip message="Producer Desk · On Air · Presenter Hub ready" />
-        </div>
-        <div className="mb-4">
-          <VersionBadge />
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -152,67 +151,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/90 px-4 backdrop-blur lg:hidden">
         <Brand compact />
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" aria-label="Open navigation">
-              <Menu />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-[290px] p-5">
-            <SheetHeader className="mb-8 text-left">
-              <SheetTitle className="sr-only">Navigation</SheetTitle>
-              <Brand />
-            </SheetHeader>
-            <NavigationLinks mobile />
-            <div className="mt-6">
-              <StudioSignalStrip message="Studio signal active" />
-            </div>
-            <div className="mt-4">
-              <VersionBadge />
-            </div>
-          </SheetContent>
-        </Sheet>
+        <div className="flex items-center gap-2">
+          <StudioLivePill />
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Open navigation">
+                <Menu />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[290px] p-5">
+              <SheetHeader className="mb-8 text-left">
+                <SheetTitle className="sr-only">Navigation</SheetTitle>
+                <Brand />
+              </SheetHeader>
+              <NavigationLinks mobile />
+            </SheetContent>
+          </Sheet>
+        </div>
       </header>
 
       <main className="min-h-screen lg:pl-[224px]">
         <div className="relative mx-auto max-w-[1460px] px-5 py-6 sm:px-8 sm:py-8 xl:px-12 xl:py-10">
-          {pathname === "/dashboard" && <div className="absolute right-[210px] top-10 z-10 hidden items-center gap-1 lg:flex">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Search"><Search /></Button>
-              </TooltipTrigger>
-              <TooltipContent>Search BroadcastOS</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
-                  <Bell />
-                  <span className="absolute right-2 top-1.5 size-1.5 rounded-full bg-brand-magenta" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>3 notifications</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Studio monitor"><Headphones /></Button>
-              </TooltipTrigger>
-              <TooltipContent>Studio monitor</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Microphone status"><Mic2 /></Button>
-              </TooltipTrigger>
-              <TooltipContent>Microphone ready</TooltipContent>
-            </Tooltip>
-          </div>}
-          {pathname !== "/broadcast" && (
-            <div className="mb-4 flex justify-end">
-              <div className="w-full sm:w-auto sm:min-w-80">
-                <VersionBadge />
-              </div>
-            </div>
-          )}
-          {pathname !== "/broadcast" && <ShowCountdownBanner className="mb-6" />}
+          {pathname !== "/broadcast" && <NowOnAirBanner className="mb-6" />}
           {children}
         </div>
       </main>

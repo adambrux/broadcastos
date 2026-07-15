@@ -223,11 +223,9 @@ export function ShowLaunchSequencePanel({
 export function LaunchSequenceIndicator({
   showId,
   date,
-  dark = false,
 }: {
   showId: StudioShowId
   date: string
-  dark?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const sequence = useLaunchSequence(showId, date)
@@ -243,15 +241,14 @@ export function LaunchSequenceIndicator({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "fixed right-5 top-20 z-40 flex items-center gap-2 rounded-2xl border px-5 py-4 text-base font-semibold shadow-2xl backdrop-blur transition hover:scale-[1.02]",
+          "inline-flex h-10 items-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition-colors",
           sequence.complete
-            ? "border-emerald-300/30 bg-emerald-400/20 text-emerald-50"
-            : "border-red-300/35 bg-red-600/90 text-white",
-          !dark && (sequence.complete ? "text-success" : "text-white")
+            ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-200 hover:bg-emerald-400/25"
+            : "border-red-300/35 bg-red-600 text-white hover:bg-red-500"
         )}
       >
-        {sequence.complete ? <ShieldCheck className="size-5" /> : <LockKeyhole className="size-5" />}
-        <span>{sequence.complete ? "Launch checked" : `Launch gate ${sequence.completedCount}/${sequence.totalCount}`}</span>
+        {sequence.complete ? <ShieldCheck className="size-4" /> : <LockKeyhole className="size-4" />}
+        <span>{sequence.complete ? "Launch checked" : `Launch ${sequence.completedCount}/${sequence.totalCount}`}</span>
       </button>
       <SheetContent
         className="w-full overflow-y-auto border-white/10 bg-[#08090d] p-0 text-white sm:max-w-2xl"

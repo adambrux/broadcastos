@@ -21,9 +21,6 @@ export type ScheduleItem = {
   sourceUrl: string
 }
 
-export const scheduleSourceLabel = "Manual schedule from Premier Plus, refresh needed"
-export const scheduleConnectionLabel = "Website sync/API not connected yet"
-
 const sourceUrl = (day: ScheduleDay) =>
   `https://www.premier.plus/stations/premier-gospel/schedule/${day}`
 
@@ -170,6 +167,18 @@ export function getScheduleState(date = new Date()) {
 
 export function formatScheduleDay(day: ScheduleDay) {
   return day.charAt(0).toUpperCase() + day.slice(1)
+}
+
+/**
+ * Adam's broadcast windows: the studio indicator only lights up while one of
+ * his shows is actually on air (UK time). Mon-Fri 13:00-16:00 · Sun 09:00-12:00.
+ */
+export function isAdamShowLive(date = new Date()) {
+  const { day, minutes } = getUkParts(date)
+  const weekdays: ScheduleDay[] = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+  if (weekdays.includes(day)) return minutes >= 13 * 60 && minutes < 16 * 60
+  if (day === "sunday") return minutes >= 9 * 60 && minutes < 12 * 60
+  return false
 }
 
 export function getUkTimeLabel(date = new Date()) {

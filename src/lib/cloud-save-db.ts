@@ -41,6 +41,17 @@ export type PresenterHubImportRow = {
   created_at: string
 }
 
+export type ListenerLogRow = {
+  id: string
+  name_key: string
+  display_name: string
+  show_id: string
+  show_date: string
+  message_count: number
+  created_at: string
+  updated_at: string
+}
+
 export type PresenterHubLinerRow = {
   id: string
   title: string
@@ -150,5 +161,26 @@ export async function ensurePresenterHubSchema(sql: BroadcastSql) {
   await sql`
     CREATE INDEX IF NOT EXISTS broadcastos_liner_archive_week_start_idx
     ON broadcastos_liner_archive (week_start DESC)
+  `
+}
+
+export async function ensureListenerLogSchema(sql: BroadcastSql) {
+  await sql`
+    CREATE TABLE IF NOT EXISTS broadcastos_listener_log (
+      id TEXT PRIMARY KEY,
+      name_key TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      show_id TEXT NOT NULL,
+      show_date TEXT NOT NULL,
+      message_count INTEGER NOT NULL DEFAULT 1,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (name_key, show_id, show_date)
+    )
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS broadcastos_listener_log_show_idx
+    ON broadcastos_listener_log (show_date DESC, show_id)
   `
 }

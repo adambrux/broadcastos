@@ -62,7 +62,6 @@ async function readFileForImport(file: File) {
 export function NewsroomPage() {
   const [imports, setImports] = useState<PresenterHubImport[]>([])
   const [liners, setLiners] = useState<LinerArchiveItem[]>([])
-  const [storageMode, setStorageMode] = useState("Loading")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState("")
@@ -80,7 +79,6 @@ export function NewsroomPage() {
       const data = await response.json() as PresenterHubResponse
       setImports(data.imports ?? [])
       setLiners(data.liners ?? [])
-      setStorageMode(data.storageMode ?? "Database")
     } catch {
       setNotice("Presenter Hub could not load yet. Try refreshing in a moment.")
     } finally {
@@ -157,20 +155,10 @@ export function NewsroomPage() {
           <div className="absolute bottom-0 left-20 h-32 w-80 rounded-full bg-brand-indigo/20 blur-3xl" />
           <div className="relative grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,.8fr)] xl:items-end">
             <div>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="border-white/10 bg-white/10 text-white"><Radio />Presenter Hub</Badge>
-                <Badge className="border-white/10 bg-white/10 text-white">Simple recallable storage</Badge>
-                <Badge className="bg-emerald-400/15 text-emerald-100">{storageMode}</Badge>
-              </div>
+              <Badge className="border-white/10 bg-white/10 text-white"><Radio />Presenter Hub</Badge>
               <h1 className="mt-5 text-[42px] font-semibold tracking-[-0.055em] sm:text-[58px]">Presenter Hub</h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-white/60 sm:text-base">
-                Store weekly briefings, station liners and show scripts without typing long filenames. Paste is the main workflow for now, with optional text-file import.
-              </p>
-            </div>
-            <div className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5">
-              <p className="flex items-center gap-2 text-sm font-semibold text-white"><Megaphone className="size-4 text-brand-magenta" />What this does now</p>
-              <p className="mt-3 text-sm leading-6 text-white/55">
-                Paste a weekly brief to extract likely liners. Paste a show script to count which archived liners featured that week. Word/PDF extraction is a later upgrade.
+                Weekly briefs and station liners in one place. Every time a show script is imported, liner reads are counted automatically.
               </p>
             </div>
           </div>
@@ -231,14 +219,14 @@ export function NewsroomPage() {
               value={content}
               onChange={(event) => setContent(event.target.value)}
               spellCheck
-              placeholder="Paste the weekly brief, station liner, or show script here. This is the best route today…"
+              placeholder="Paste the weekly brief, station liner, or show script here…"
               className="mt-4 min-h-[210px] w-full resize-y rounded-2xl border bg-white p-4 text-sm leading-6 outline-none placeholder:text-muted-foreground/45 focus:ring-2 focus:ring-ring"
             />
 
             <label className="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed bg-brand-soft/20 px-4 py-6 text-center transition hover:border-brand-indigo/30">
               <FolderOpen className="size-6 text-brand-indigo" />
               <span className="mt-2 text-sm font-semibold">{selectedFile ? selectedFile.name : "Optional: choose a plain text file"}</span>
-              <span className="mt-1 text-xs text-muted-foreground">TXT, Markdown and CSV only for now. For Word or PDF, copy and paste the useful text above.</span>
+              <span className="mt-1 text-xs text-muted-foreground">TXT, Markdown and CSV files work. For Word or PDF, paste the text above instead.</span>
               <input
                 type="file"
                 className="sr-only"
@@ -329,15 +317,11 @@ export function NewsroomPage() {
         <Card className="rounded-[28px] bg-ink text-white shadow-card">
           <CardContent className="p-5 sm:p-7">
             <span className="grid size-12 place-items-center rounded-2xl bg-white/10 text-brand-magenta"><History className="size-5" /></span>
-            <h2 className="mt-5 text-2xl font-semibold tracking-[-0.04em]">How to use it today</h2>
+            <h2 className="mt-5 text-2xl font-semibold tracking-[-0.04em]">Liners look after themselves</h2>
             <div className="mt-5 space-y-4 text-sm leading-6 text-white/65">
-              <Step number="1" title="Paste the weekly brief" body="BroadcastOS stores it under the week and pulls out likely station liners." />
-              <Step number="2" title="Check the Liner Archive" body="You’ll see the liner script, week and whether it is active." />
-              <Step number="3" title="Paste the finished show script" body="The hub counts how many archived liners featured in the script for that week." />
-              <Step number="4" title="Look back later" body="Search by liner, week, show or original file without remembering long filenames." />
-            </div>
-            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs leading-5 text-white/45">
-              Manual for now: paste is the trusted workflow. Word/PDF extraction and AI extraction are future upgrades.
+              <Step number="1" title="Save the weekly brief" body="The liners inside it are pulled out and stored for the week." />
+              <Step number="2" title="Import your show as normal" body="Every script import counts which liners were read, with no extra steps." />
+              <Step number="3" title="Look back any time" body="Search by liner, week or show. Read counts also appear in Insights." />
             </div>
           </CardContent>
         </Card>
