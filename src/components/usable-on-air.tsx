@@ -235,7 +235,7 @@ export function UsableOnAir() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="truncate text-sm font-semibold">{show.name}</p>
-                <span className="rounded-full bg-white/10 px-2 py-0.5 font-mono text-[9px] font-bold text-white/70">v{broadcastOSVersion.code}</span>
+                <span className="rounded-full bg-white/10 px-2 py-0.5 font-mono text-[9px] font-bold text-white/70">v{broadcastOSVersion.code} · {broadcastOSVersion.build}</span>
               </div>
               <p className="text-[10px] text-white/40">{hourLabel} · Link {hourLinkNumber}/{hourLinkTotal} · Show {activeIndex + 1}/{workspace.items.length}</p>
             </div>

@@ -226,6 +226,10 @@ function readStringField(value: unknown, key: string) {
 export function serialiseShowPlanForPresenterHub(workspace: {
   date?: string
   items?: unknown[]
+  preShowPromo?: {
+    whatsappStatus?: string
+    videoScript?: string
+  }
 }) {
   const items = Array.isArray(workspace.items) ? workspace.items : []
 
@@ -253,6 +257,13 @@ export function serialiseShowPlanForPresenterHub(workspace: {
       readStringField(item, "next") ? `What Comes Next: ${readStringField(item, "next")}` : "",
       readStringField(item, "notes") ? `Producer Notes: ${readStringField(item, "notes")}` : "",
     ].filter(Boolean).join("\n")),
+    workspace.preShowPromo?.whatsappStatus || workspace.preShowPromo?.videoScript
+      ? [
+        "PRE-SHOW PROMO",
+        workspace.preShowPromo.whatsappStatus ? `WhatsApp Status: ${workspace.preShowPromo.whatsappStatus}` : "",
+        workspace.preShowPromo.videoScript ? `30-second Video Script: ${workspace.preShowPromo.videoScript}` : "",
+      ].filter(Boolean).join("\n")
+      : "",
   ].filter(Boolean).join("\n\n")
 }
 

@@ -24,10 +24,6 @@ export type StudioItem = {
   tease: string
   listenerLed: boolean
   next: string
-  preShowPromo?: {
-    whatsappStatus?: string
-    videoScript?: string
-  }
   /**
    * Deprecated in Script Format v2. Kept only so older saved shows can be opened.
    * New scripts should use momentNoResponses via the Response Gate.
@@ -36,6 +32,11 @@ export type StudioItem = {
   stationRequirement: string
   notes: string
   done: boolean
+}
+
+export type PreShowPromo = {
+  whatsappStatus: string
+  videoScript: string
 }
 
 export type ListenerMessage = {
@@ -53,6 +54,7 @@ export type StudioWorkspace = {
   date: string
   items: StudioItem[]
   messages: ListenerMessage[]
+  preShowPromo: PreShowPromo
   updatedAt: string
 }
 
@@ -87,7 +89,6 @@ const makeItem = (
   tease: details.tease ?? "",
   listenerLed: details.listenerLed ?? false,
   next: details.next ?? "",
-  preShowPromo: details.preShowPromo,
   fallback: details.fallback ?? "",
   stationRequirement: details.stationRequirement ?? "",
   notes: details.notes ?? "",
@@ -461,6 +462,7 @@ const fallbackWorkspace: StudioWorkspace = {
   date: "2026-07-06",
   items: [],
   messages: [],
+  preShowPromo: { whatsappStatus: "", videoScript: "" },
   updatedAt: "",
 }
 const fallbackSnapshot = JSON.stringify(fallbackWorkspace)
@@ -478,7 +480,6 @@ function normalizeItem(item: StudioItem): StudioItem {
     tease: item.tease ?? "",
     listenerLed: Boolean(item.listenerLed),
     next: item.next ?? "",
-    preShowPromo: item.preShowPromo,
     fallback: item.fallback ?? "",
     stationRequirement: item.stationRequirement ?? "",
     notes: item.notes ?? "",
@@ -513,7 +514,16 @@ function subscribe(listener: () => void) {
 export function useStudioWorkspace() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, () => fallbackSnapshot)
   const workspace = JSON.parse(snapshot) as StudioWorkspace
-  return { ...workspace, mode: workspace.mode ?? "remote", items: (workspace.items ?? []).map(normalizeItem), messages: (workspace.messages ?? []).map(normalizeMessage) }
+  return {
+    ...workspace,
+    mode: workspace.mode ?? "remote",
+    preShowPromo: {
+      whatsappStatus: workspace.preShowPromo?.whatsappStatus ?? "",
+      videoScript: workspace.preShowPromo?.videoScript ?? "",
+    },
+    items: (workspace.items ?? []).map(normalizeItem),
+    messages: (workspace.messages ?? []).map(normalizeMessage),
+  }
 }
 
 export function saveStudioWorkspace(workspace: StudioWorkspace) {
@@ -523,7 +533,7 @@ export function saveStudioWorkspace(workspace: StudioWorkspace) {
 }
 
 export function createBlankWorkspace(showId: StudioShowId, date: string, mode: StudioMode): StudioWorkspace {
-  return { mode, showId, date, items: [], messages: [], updatedAt: new Date().toISOString() }
+  return { mode, showId, date, items: [], messages: [], preShowPromo: { whatsappStatus: "", videoScript: "" }, updatedAt: new Date().toISOString() }
 }
 
 export function createTemplateWorkspace(showId: StudioShowId, date: string, mode: StudioMode): StudioWorkspace {
@@ -533,6 +543,7 @@ export function createTemplateWorkspace(showId: StudioShowId, date: string, mode
     date,
     items: studioTemplates[showId].map((studioItem) => ({ ...studioItem })),
     messages: [],
+    preShowPromo: { whatsappStatus: "", videoScript: "" },
     updatedAt: new Date().toISOString(),
   }
 }

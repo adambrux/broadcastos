@@ -77,7 +77,7 @@ export function AppSplashScreen() {
         </div>
 
         <p className="mt-5 font-mono text-xs uppercase tracking-[0.2em] text-white/35">
-          {broadcastOSVersion.label} · {broadcastOSVersion.date}
+          {broadcastOSVersion.label} · build {broadcastOSVersion.build} · {broadcastOSVersion.date}
         </p>
       </div>
     </div>

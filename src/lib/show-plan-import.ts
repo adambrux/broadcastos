@@ -1,4 +1,4 @@
-import type { StudioItem, StudioShowId } from "@/lib/studio-workspace"
+import type { PreShowPromo, StudioItem, StudioShowId } from "@/lib/studio-workspace"
 
 type ParsedFields = Record<string, string>
 
@@ -7,6 +7,7 @@ export type ShowPlanImportResult = {
   warnings: string[]
   showId?: StudioShowId
   metadata: ParsedFields
+  preShowPromo: PreShowPromo
 }
 
 const fieldAliases: Record<string, string> = {
@@ -32,6 +33,13 @@ const fieldAliases: Record<string, string> = {
   "station requirement": "stationRequirement",
   "station requirements": "stationRequirement",
   "target duration": "duration",
+  "30 second video script": "videoScript",
+  "30-second video script": "videoScript",
+  "video script": "videoScript",
+  "story script": "videoScript",
+  "whatsapp": "whatsappStatus",
+  "whatsapp status": "whatsappStatus",
+  "whatsapp status message": "whatsappStatus",
   tease: "tease",
   "tease ahead": "tease",
   "the moment": "script",
@@ -48,7 +56,7 @@ const fieldAliases: Record<string, string> = {
   "what comes next": "whatComesNext",
 }
 
-const fieldPattern = /^\s*([A-Za-z][A-Za-z0-9 /’'·–—-]+):\s*(.*)$/
+const fieldPattern = /^\s*([A-Za-z0-9][A-Za-z0-9 /’'·–—-]+):\s*(.*)$/
 
 const numberWords: Record<string, string> = {
   one: "1",
@@ -139,13 +147,47 @@ function getHourName(hourFields: ParsedFields, hourNumber: string) {
   return clean(hourFields["hour name"]) || clean(hourFields.hourName) || `Hour ${hourNumber}`
 }
 
+function emptyPreShowPromo(): PreShowPromo {
+  return { whatsappStatus: "", videoScript: "" }
+}
+
+function parsePreShowPromo(normalized: string): PreShowPromo {
+  const promoHeading = normalized.match(/^\s*(?:#{1,6}\s*)?PRE[-\s]?SHOW\s+PROMO\b.*$/im)
+  if (!promoHeading || promoHeading.index === undefined) return emptyPreShowPromo()
+
+  const body = normalized.slice(promoHeading.index + promoHeading[0].length)
+  const fields = parseFields(body)
+
+  return {
+    whatsappStatus: clean(fields.whatsappStatus),
+    videoScript: clean(fields.videoScript),
+  }
+}
+
+function warnIfDirectionsLeak(item: StudioItem, warnings: string[]) {
+  const speakableFields = [
+    ["Context", item.context],
+    ["Recap", item.recap],
+    ["The Moment", item.script],
+    ["The Moment · If No Responses", item.momentNoResponses],
+    ["Call To Action", item.cta],
+    ["Tease Ahead", item.tease],
+  ] as const
+
+  speakableFields.forEach(([label, value]) => {
+    if (/\b(producer note|direction|bed|sfx|jingle|pause for|do not|remember to)\b/i.test(value)) {
+      warnings.push(`${item.title}: ${label} may contain production directions. Script fields should contain speakable words only.`)
+    }
+  })
+}
+
 export function parseShowPlanImport(value: string): ShowPlanImportResult {
   const normalized = value.replace(/\r\n/g, "\n").trim()
   const warnings: string[] = []
   const items: StudioItem[] = []
 
   if (!normalized) {
-    return { items, warnings: ["Paste a show plan before importing."], metadata: {} }
+    return { items, warnings: ["Paste a show plan before importing."], metadata: {}, preShowPromo: emptyPreShowPromo() }
   }
 
   const hourHeadingPattern = /^\s*(?:#{1,6}\s*)?HOUR\s+(\d+|one|two|three|four|five|six)\b.*$/gim
@@ -154,6 +196,7 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
   const showId = inferShowId(metadata.show)
   const hourSections = findSections(normalized, hourHeadingPattern)
   const hasPreShowPromo = /^\s*(?:#{1,6}\s*)?PRE[-\s]?SHOW\s+PROMO\b/im.test(normalized)
+  const preShowPromo = parsePreShowPromo(normalized)
 
   if (!hourSections.length) {
     return {
@@ -161,6 +204,7 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
       warnings: ["No hour sections found. Use headings like # HOUR 1, ## HOUR 2 or HOUR THREE."],
       metadata,
       showId,
+      preShowPromo,
     }
   }
 
@@ -227,13 +271,34 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
         warnings.push(`${item.title}: listener-led links need The Moment · If No Responses for the Response Gate.`)
       }
 
+      if (listenerLed && !clean(fields.script).match(/\b(message|messages|response|responses|reply|replies|whatsapp|text|voice note)\b/i)) {
+        warnings.push(`${item.title}: Listener-led is Yes, but The Moment · If Responses does not obviously reference listener responses.`)
+      }
+
+      if (isLinerLink(item) && !/\[LINER STARTS HERE/i.test(item.script)) {
+        warnings.push(`${item.title}: liner links should include [LINER STARTS HERE · …] inside The Moment.`)
+      }
+
+      if (/track of the week/i.test(`${item.title} ${item.featureId}`) && !/3|three|15|final/i.test(item.hour)) {
+        warnings.push(`${item.title}: Track of the Week is usually expected in the 3 o’clock/final hour.`)
+      }
+
+      warnIfDirectionsLeak(item, warnings)
+
       items.push(item)
     })
   })
 
   if (!hasPreShowPromo) {
     warnings.push("No PRE-SHOW PROMO section found. Script Format v2 expects one at the end of every plan.")
+  } else {
+    if (!preShowPromo.whatsappStatus) warnings.push("PRE-SHOW PROMO is missing a WhatsApp status message.")
+    if (!preShowPromo.videoScript) warnings.push("PRE-SHOW PROMO is missing a 30-second video/story script.")
   }
 
-  return { items, warnings, metadata, showId }
+  return { items, warnings, metadata, showId, preShowPromo }
+}
+
+function isLinerLink(item: Pick<StudioItem, "title" | "script">) {
+  return /liner link|station liner|\bP[12]\b/i.test(item.title) || /\[LINER STARTS HERE/i.test(item.script)
 }

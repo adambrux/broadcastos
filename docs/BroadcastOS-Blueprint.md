@@ -88,7 +88,7 @@ Legacy route `/dashboard` redirects to `/today`. Existing production routes rema
 
 ### Current app version
 
-BroadcastOS is now labelled from v2.1 onwards. Version 2.1 is the Script Format v2 and Response Gate release, dated 15 July 2026. The current version code should be visible on every page so Adam can confirm when Vercel, Safari or an iPad is showing the latest build.
+BroadcastOS is now labelled from v2.1 onwards. Version 2.1 is the Script Format v2 and Response Gate release, dated 15 July 2026. The current version code should be visible on every page so Adam can confirm when Vercel, Safari or an iPad is showing the latest build. The human version stays intentional, while the build hash updates automatically during production builds.
 
 ### Built
 

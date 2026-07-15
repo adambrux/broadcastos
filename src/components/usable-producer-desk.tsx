@@ -432,6 +432,7 @@ export function UsableProducerDesk() {
         ...workspace,
         showId: nextShowId,
         items: nextItems,
+        preShowPromo: importedPlan.preShowPromo,
       },
       messagePrefix
     )
@@ -676,6 +677,13 @@ export function UsableProducerDesk() {
                     <p className="text-[10px] text-muted-foreground">warnings</p>
                   </div>
                 </div>
+                {showPlanValue && (
+                  <p className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-muted-foreground">
+                    Pre-show promo: <strong className="text-foreground">
+                      {importedPlan.preShowPromo.whatsappStatus || importedPlan.preShowPromo.videoScript ? "Detected" : "Not found yet"}
+                    </strong>
+                  </p>
+                )}
                 {importedPlan.showId && (
                   <p className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-muted-foreground">
                     Detected show: <strong className="text-foreground">{studioShows[importedPlan.showId].name}</strong>
@@ -733,6 +741,23 @@ export function UsableProducerDesk() {
                 )}
               </div>
             </aside>
+          </div>
+        </section>
+      )}
+
+      {(workspace.preShowPromo.whatsappStatus || workspace.preShowPromo.videoScript) && (
+        <section className="grid gap-4 rounded-[26px] border bg-white p-5 shadow-sm sm:p-6 lg:grid-cols-2">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">Pre-show promo · WhatsApp status</p>
+            <p className="mt-3 whitespace-pre-wrap rounded-2xl bg-brand-soft/45 p-4 text-sm leading-6 text-muted-foreground">
+              {workspace.preShowPromo.whatsappStatus || "No WhatsApp status saved yet."}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">30-second video/story script</p>
+            <p className="mt-3 whitespace-pre-wrap rounded-2xl bg-muted/25 p-4 text-sm leading-6 text-muted-foreground">
+              {workspace.preShowPromo.videoScript || "No video/story script saved yet."}
+            </p>
           </div>
         </section>
       )}

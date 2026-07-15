@@ -99,7 +99,7 @@ function VersionBadge({ dark = false }: { dark?: boolean }) {
     )}>
       <span className="min-w-0">
         <span className={cn("block truncate font-semibold", dark ? "text-white" : "text-foreground")}>{broadcastOSVersion.label}</span>
-        <span className="block truncate text-[10px]">{broadcastOSVersion.name}</span>
+        <span className="block truncate text-[10px]">{broadcastOSVersion.name} · build {broadcastOSVersion.build}</span>
       </span>
       <span className={cn("shrink-0 rounded-full px-2 py-1 font-mono text-[10px] font-bold", dark ? "bg-white text-ink" : "bg-ink text-white")}>
         {broadcastOSVersion.code}

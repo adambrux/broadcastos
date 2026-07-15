@@ -21,6 +21,10 @@ export type SavedShowWorkspace = {
   date?: string
   items?: unknown[]
   messages?: unknown[]
+  preShowPromo?: {
+    whatsappStatus?: string
+    videoScript?: string
+  }
   updatedAt?: string
   [key: string]: unknown
 }
