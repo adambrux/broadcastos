@@ -142,7 +142,9 @@ export async function GET() {
     ` as PresenterHubLinerRow[]
 
     const imports = importRows.map(importFromRow)
-    const liners = applyLinerUsage(linerRows.map(linerFromRow), imports)
+    // Stored counts are authoritative: reads are counted once per show day at
+    // import time, so no fuzzy text-matching on the way out.
+    const liners = linerRows.map(linerFromRow)
 
     return Response.json({
       imports,
@@ -334,11 +336,13 @@ export async function DELETE(request: Request) {
 
     const url = new URL(request.url)
     const linerId = url.searchParams.get("linerId")
-    if (!linerId) {
-      return Response.json({ error: "linerId is needed." }, { status: 400 })
+    const importId = url.searchParams.get("importId")
+    if (!linerId && !importId) {
+      return Response.json({ error: "linerId or importId is needed." }, { status: 400 })
     }
 
-    await sql`DELETE FROM broadcastos_liner_archive WHERE id = ${linerId}`
+    if (linerId) await sql`DELETE FROM broadcastos_liner_archive WHERE id = ${linerId}`
+    if (importId) await sql`DELETE FROM broadcastos_presenter_imports WHERE id = ${importId}`
     return Response.json({ ok: true, status: cloudSaveStatus() })
   } catch (error) {
     return Response.json({ error: errorMessage(error), status: cloudSaveStatus() }, { status: 500 })

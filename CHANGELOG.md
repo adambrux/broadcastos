@@ -2,6 +2,11 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.8 · True read counts · 15 July 2026
+
+- Liner read counts now show exactly what was counted at import time: one read per liner per show day. The old fuzzy text-matching that inflated counts is retired.
+- Old wrongly-extracted "liners" (script fragments) cleared from the archive, which now holds the real station liners with honest counts.
+
 ## v2.7 · Presenter Hub repaired · 15 July 2026
 
 - Found and fixed the root cause of the empty Presenter Hub: dates coming back from the database in a different shape than the page expected. Liners and imports now load correctly.
