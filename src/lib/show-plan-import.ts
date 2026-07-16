@@ -6,8 +6,26 @@ export type ShowPlanImportResult = {
   items: StudioItem[]
   warnings: string[]
   showId?: StudioShowId
+  /** ISO broadcast date read from the plan's Date field, when present. */
+  date?: string
   metadata: ParsedFields
   preShowPromo: PreShowPromo
+}
+
+const monthNumbers: Record<string, number> = {
+  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+  july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
+}
+
+/** Reads "Thursday 16 July 2026 · normal pre-record" style values into ISO dates. */
+export function inferShowDate(value?: string): string | undefined {
+  if (!value) return undefined
+  const match = value.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})/i)
+  if (!match) return undefined
+  const day = Number(match[1])
+  const month = monthNumbers[match[2].toLowerCase()]
+  if (!month || day < 1 || day > 31) return undefined
+  return `${match[3]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 }
 
 const fieldAliases: Record<string, string> = {
@@ -226,6 +244,7 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
   const firstHourIndex = normalized.search(/^\s*(?:#{1,6}\s*)?HOUR\s+(?:\d+|one|two|three|four|five|six)\b/im)
   const metadata = parseFields(firstHourIndex >= 0 ? normalized.slice(0, firstHourIndex) : "")
   const showId = inferShowId(metadata.show)
+  const date = inferShowDate(metadata.date)
   const hourSections = findSections(normalized, hourHeadingPattern)
   const hasPreShowPromo = /^\s*(?:#{1,6}\s*)?PRE[-\s]?SHOW\s+PROMO\b/im.test(normalized)
   const preShowPromo = parsePreShowPromo(normalized)
@@ -236,6 +255,7 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
       warnings: ["No hour sections found. Use headings like # HOUR 1, ## HOUR 2 or HOUR THREE."],
       metadata,
       showId,
+      date,
       preShowPromo,
     }
   }
@@ -340,7 +360,7 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
     if (!preShowPromo.videoScript) warnings.push("PRE-SHOW PROMO is missing a 30-second video/story script.")
   }
 
-  return { items, warnings, metadata, showId, preShowPromo }
+  return { items, warnings, metadata, showId, date, preShowPromo }
 }
 
 function isLinerLink(item: Pick<StudioItem, "title" | "script">) {

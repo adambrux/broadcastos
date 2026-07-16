@@ -2,6 +2,10 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.12 · The script sets the date · 16 July 2026
+
+- Importing a show plan now reads the broadcast date from the script itself and sets it everywhere: the workspace, liner read dates and cloud saves all land on the right day and week automatically. No more stale dates filing liners under the wrong week.
+
 ## v2.11 · Liners only, everywhere · 16 July 2026
 
 - Fixed script fragments being stored as liners: saving a show online was still using the old keyword guessing. Every route into the liner archive (import, cloud save) now only accepts links structurally marked as liners in the script, with the same one-read-per-show-day counting.

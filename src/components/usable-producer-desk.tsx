@@ -297,13 +297,14 @@ export function UsableProducerDesk() {
     showPlanText: string,
     showId: StudioShowId,
     messagePrefix: string,
-    liners: { title: string; script: string }[]
+    liners: { title: string; script: string }[],
+    showDate?: string
   ) {
     if (!showPlanText.trim()) return
 
     try {
       const showName = studioShows[showId].name
-      const usageDate = workspace.date || new Date().toISOString().slice(0, 10)
+      const usageDate = showDate || new Date().toISOString().slice(0, 10)
       const weekStart = weekStartFromDate(usageDate)
       const title = friendlyImportTitle("show-script", showName, weekStart)
       const response = await fetch("/api/presenter-hub", {
@@ -418,6 +419,8 @@ export function UsableProducerDesk() {
 
     const nextItems = mode === "append" ? [...workspace.items, ...importedPlan.items] : importedPlan.items
     const nextShowId = importedPlan.showId ?? workspace.showId
+    // The plan's own Date field wins: it keeps liner reads and cloud saves on the right day.
+    const nextDate = importedPlan.date ?? workspace.date
 
     const messagePrefix = `${importedPlan.items.length} imported link${importedPlan.items.length === 1 ? "" : "s"} ${mode === "append" ? "added" : "loaded"} from show plan.`
 
@@ -425,12 +428,13 @@ export function UsableProducerDesk() {
       {
         ...workspace,
         showId: nextShowId,
+        date: nextDate,
         items: nextItems,
         preShowPromo: importedPlan.preShowPromo,
       },
       messagePrefix
     )
-    void archiveShowPlanImport(showPlanValue, nextShowId, messagePrefix, extractLinerLinksFromShowItems(importedPlan.items))
+    void archiveShowPlanImport(showPlanValue, nextShowId, messagePrefix, extractLinerLinksFromShowItems(importedPlan.items), nextDate)
     setSelectedId(importedPlan.items[0]?.id ?? "")
     setShowPlanOpen(false)
   }
