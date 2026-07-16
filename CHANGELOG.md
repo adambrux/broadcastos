@@ -2,6 +2,11 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.9 · Reading view refined · 16 July 2026
+
+- The link counter on the On Air screen is now big and unmissable: hour, link number out of the hour, and position in the whole show, right beside the link title.
+- Fixed Start reading not scrolling: the auto-scroll now moves reliably on Safari and iPad, and rolls through the full page including producer notes.
+
 ## v2.8 · True read counts · 15 July 2026
 
 - Liner read counts now show exactly what was counted at import time: one read per liner per show day. The old fuzzy text-matching that inflated counts is retired.

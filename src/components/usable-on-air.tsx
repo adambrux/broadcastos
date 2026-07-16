@@ -58,8 +58,7 @@ export function UsableOnAir() {
   const [prompter, setPrompter] = useState<PrompterState>("off")
   const [listenerName, setListenerName] = useState("")
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const scriptRef = useRef<HTMLElement>(null)
-  const prompterControl = useRef<{ raf: number; last: number; speed: number; target: number; paused: boolean } | null>(null)
+  const prompterControl = useRef<{ raf: number; last: number; speed: number; target: number; pos: number; paused: boolean } | null>(null)
 
   const current = workspace.items[activeIndex]
   const next = workspace.items[activeIndex + 1]
@@ -101,21 +100,26 @@ export function UsableOnAir() {
 
   function startPrompter() {
     const container = scrollContainerRef.current
-    const script = scriptRef.current
-    if (!container || !script || !current) return
+    if (!container || !current) return
 
     const text = [current.context, current.recap, visibleMoment, current.cta, current.tease].join(" ")
     const words = text.trim().split(/\s+/).filter(Boolean).length
     const seconds = Math.max(15, (words / wordsPerMinute) * 60)
-    const scriptBottom = container.scrollTop + script.getBoundingClientRect().bottom
-    const target = Math.min(
-      container.scrollHeight - container.clientHeight,
-      Math.max(container.scrollTop, scriptBottom - container.clientHeight * 0.4)
-    )
+    // Roll to the bottom of the page so there is always somewhere to go.
+    const target = container.scrollHeight - container.clientHeight
     const distance = target - container.scrollTop
-    if (distance <= 0) return
+    if (distance <= 4) return
 
-    const control = { raf: 0, last: performance.now(), speed: distance / (seconds * 1000), target, paused: false }
+    const control = {
+      raf: 0,
+      last: performance.now(),
+      speed: distance / (seconds * 1000),
+      target,
+      // Track position ourselves: Safari rounds scrollTop, which would swallow
+      // sub-pixel steps and freeze the scroll entirely.
+      pos: container.scrollTop,
+      paused: false,
+    }
     prompterControl.current = control
     setPrompter("rolling")
 
@@ -123,8 +127,9 @@ export function UsableOnAir() {
       const active = prompterControl.current
       if (!active) return
       if (!active.paused) {
-        container.scrollTop += active.speed * (timestamp - active.last)
-        if (container.scrollTop >= active.target - 1) {
+        active.pos = Math.min(active.target, active.pos + active.speed * (timestamp - active.last))
+        container.scrollTop = active.pos
+        if (active.pos >= active.target - 1) {
           prompterControl.current = null
           setPrompter("off")
           return
@@ -306,7 +311,7 @@ export function UsableOnAir() {
             </button>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{show.name}</p>
-              <p className="text-[10px] text-white/40">{hourLabel} · Link {hourLinkNumber} of {hourLinkTotal} · {activeIndex + 1} of {workspace.items.length} in the show</p>
+              <p className="text-[10px] text-white/40">{hourLabel}</p>
             </div>
           </div>
           <div className="hidden items-center gap-4 md:flex">
@@ -348,19 +353,30 @@ export function UsableOnAir() {
         )}
 
         <section className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5 shadow-[0_18px_70px_rgba(0,0,0,.2)]">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-red-50 text-red-600"><span className="studio-live-dot" />Current</Badge>
-            {hasResponseGate && <Badge className="bg-violet-200 text-violet-950">Response Gate</Badge>}
-            {linerLink && <Badge className="bg-fuchsia-200 text-fuchsia-950">Liner</Badge>}
-            {current.time && <span className="font-mono text-[10px] text-white/40">{current.time}</span>}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="bg-red-50 text-red-600"><span className="studio-live-dot" />Current</Badge>
+                {hasResponseGate && <Badge className="bg-violet-200 text-violet-950">Response Gate</Badge>}
+                {linerLink && <Badge className="bg-fuchsia-200 text-fuchsia-950">Liner</Badge>}
+                {current.time && <span className="font-mono text-[10px] text-white/40">{current.time}</span>}
+              </div>
+              <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-4xl">{current.title}</h1>
+              {current.objective && <p className="mt-2 max-w-3xl text-sm leading-6 text-white/55">{current.objective}</p>}
+            </div>
+            <div className="shrink-0 rounded-2xl border border-white/10 bg-black/25 px-5 py-3.5 text-right">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-200">{hourLabel}</p>
+              <p className="mt-0.5 font-mono text-5xl font-black leading-none tracking-[-0.05em]">
+                {hourLinkNumber}<span className="text-2xl text-white/35">/{hourLinkTotal}</span>
+              </p>
+              <p className="mt-1.5 text-[11px] font-medium text-white/45">{activeIndex + 1} of {workspace.items.length} in the show</p>
+            </div>
           </div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-4xl">{current.title}</h1>
-          {current.objective && <p className="mt-2 max-w-3xl text-sm leading-6 text-white/55">{current.objective}</p>}
         </section>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
           <section className="space-y-4">
-            <article ref={scriptRef} className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4 shadow-[0_24px_80px_rgba(0,0,0,.24)] sm:p-5">
+            <article className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4 shadow-[0_24px_80px_rgba(0,0,0,.24)] sm:p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-300">Your script</p>
