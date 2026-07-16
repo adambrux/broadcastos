@@ -17,6 +17,7 @@ import {
   RotateCcw,
   ShieldCheck,
   Square,
+  Star,
   X,
 } from "lucide-react"
 
@@ -28,7 +29,7 @@ import { openAppSplash } from "@/components/app-splash-screen"
 import { LaunchSequenceBody, LaunchSequenceIndicator } from "@/components/show-launch-sequence"
 import { StudioAmbient } from "@/components/studio-motion"
 import { useLaunchSequence } from "@/lib/launch-sequence"
-import { useListenerLog } from "@/lib/listener-log"
+import { listenerSources, useListenerLog, type ListenerSource } from "@/lib/listener-log"
 import {
   saveStudioWorkspace,
   studioShows,
@@ -45,7 +46,13 @@ function isLinerLink(item?: { title?: string; script?: string }) {
 
 const wordsPerMinute = 150
 
-type PrompterState = "off" | "rolling" | "paused"
+type PrompterState = "off" | "countdown" | "rolling" | "paused"
+
+const keeperTags = [
+  { value: "keeper", label: "Worth keeping" },
+  { value: "birthday", label: "Birthday" },
+  { value: "favourite-song", label: "Favourite song" },
+] as const
 
 export function UsableOnAir() {
   const workspace = useStudioWorkspace()
@@ -56,9 +63,16 @@ export function UsableOnAir() {
   const [studioResetConfirmed, setStudioResetConfirmed] = useState(false)
   const [responseChoices, setResponseChoices] = useState<Record<string, "yes" | "no">>({})
   const [prompter, setPrompter] = useState<PrompterState>("off")
+  const [countdown, setCountdown] = useState(5)
   const [listenerName, setListenerName] = useState("")
+  const [source, setSource] = useState<ListenerSource>("whatsapp")
+  const [keeperFor, setKeeperFor] = useState("")
+  const [keeperTag, setKeeperTag] = useState<string>("keeper")
+  const [keeperText, setKeeperText] = useState("")
+  const [keeperNotice, setKeeperNotice] = useState("")
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const prompterControl = useRef<{ raf: number; last: number; speed: number; target: number; pos: number; paused: boolean } | null>(null)
+  const countdownTimer = useRef<number | null>(null)
 
   const current = workspace.items[activeIndex]
   const next = workspace.items[activeIndex + 1]
@@ -87,6 +101,10 @@ export function UsableOnAir() {
       window.cancelAnimationFrame(prompterControl.current.raf)
       prompterControl.current = null
     }
+    if (countdownTimer.current !== null) {
+      window.clearInterval(countdownTimer.current)
+      countdownTimer.current = null
+    }
     setPrompter("off")
   }, [])
 
@@ -98,9 +116,31 @@ export function UsableOnAir() {
 
   useEffect(() => stopPrompter, [stopPrompter])
 
-  function startPrompter() {
+  function startCountdown() {
+    if (prompter !== "off") return
+    setCountdown(5)
+    setPrompter("countdown")
+    countdownTimer.current = window.setInterval(() => {
+      setCountdown((value) => {
+        if (value <= 1) {
+          if (countdownTimer.current !== null) {
+            window.clearInterval(countdownTimer.current)
+            countdownTimer.current = null
+          }
+          beginScroll()
+          return 0
+        }
+        return value - 1
+      })
+    }, 1000)
+  }
+
+  function beginScroll() {
     const container = scrollContainerRef.current
-    if (!container || !current) return
+    if (!container || !current) {
+      setPrompter("off")
+      return
+    }
 
     const text = [current.context, current.recap, visibleMoment, current.cta, current.tease].join(" ")
     const words = text.trim().split(/\s+/).filter(Boolean).length
@@ -108,7 +148,10 @@ export function UsableOnAir() {
     // Roll to the bottom of the page so there is always somewhere to go.
     const target = container.scrollHeight - container.clientHeight
     const distance = target - container.scrollTop
-    if (distance <= 4) return
+    if (distance <= 4) {
+      setPrompter("off")
+      return
+    }
 
     const control = {
       raf: 0,
@@ -175,10 +218,24 @@ export function UsableOnAir() {
     setResponseChoices((choices) => ({ ...choices, [current.id]: choice }))
   }
 
-  function addListener() {
-    if (!listenerName.trim()) return
-    listeners.logMessage(listenerName)
+  function addListener(name = listenerName) {
+    if (!name.trim()) return
+    listeners.logMessage(name, source)
     setListenerName("")
+  }
+
+  async function saveKeeper() {
+    if (!keeperFor || !keeperText.trim()) return
+    try {
+      await listeners.saveKeeper(keeperFor, keeperTag, keeperText)
+      setKeeperNotice(`Saved for ${keeperFor}.`)
+      setKeeperFor("")
+      setKeeperText("")
+      setKeeperTag("keeper")
+      window.setTimeout(() => setKeeperNotice(""), 3000)
+    } catch (error) {
+      setKeeperNotice(error instanceof Error ? error.message : "Could not save that yet.")
+    }
   }
 
   if (!current) {
@@ -298,6 +355,20 @@ export function UsableOnAir() {
         </div>
       )}
 
+      {prompter === "countdown" && (
+        <button
+          type="button"
+          onClick={stopPrompter}
+          aria-label="Cancel countdown"
+          className="fixed inset-0 z-[65] grid place-items-center bg-[#08090d]/90 backdrop-blur-sm"
+        >
+          <span className="text-center">
+            <span className="block font-mono text-[38vh] font-black leading-none text-white">{countdown}</span>
+            <span className="mt-2 block text-sm font-semibold uppercase tracking-[0.2em] text-white/40">Scrolling starts… tap to cancel</span>
+          </span>
+        </button>
+      )}
+
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#08090d]/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
           <div className="flex min-w-0 items-center gap-3">
@@ -405,7 +476,7 @@ export function UsableOnAir() {
                   {!responseGateOpen && prompter === "off" && (
                     <Button
                       className="h-10 rounded-xl bg-white px-4 text-ink hover:bg-white/90"
-                      onClick={startPrompter}
+                      onClick={startCountdown}
                     >
                       <Play className="size-4" />Start reading
                     </Button>
@@ -494,51 +565,140 @@ export function UsableOnAir() {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">Listeners this show</p>
                 <Badge className="bg-white/10 text-white">{listeners.totalMessages} message{listeners.totalMessages === 1 ? "" : "s"}</Badge>
               </div>
-              <div className="mt-4 flex gap-2">
-                <Input
-                  value={listenerName}
-                  onChange={(event) => setListenerName(event.target.value)}
-                  onKeyDown={(event) => { if (event.key === "Enter") addListener() }}
-                  placeholder="Who messaged in?"
-                  className="h-11 rounded-xl border-white/10 bg-black/20 text-white placeholder:text-white/25"
-                />
-                <Button className="h-11 rounded-xl bg-white px-3 text-ink hover:bg-white/90" onClick={addListener} aria-label="Log listener message">
-                  <Plus className="size-4" />
-                </Button>
+              <div className="mt-4 inline-flex w-full rounded-xl border border-white/10 bg-black/20 p-1" role="group" aria-label="Message source">
+                {listenerSources.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={source === option.value}
+                    onClick={() => setSource(option.value)}
+                    className={cn(
+                      "min-h-9 flex-1 rounded-lg px-2 text-xs font-semibold transition-colors",
+                      source === option.value ? "bg-white text-ink" : "text-white/45 hover:text-white"
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </div>
+              <div className="relative mt-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={listenerName}
+                    onChange={(event) => setListenerName(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === "Enter") addListener() }}
+                    placeholder="Who messaged in?"
+                    className="h-11 rounded-xl border-white/10 bg-black/20 text-white placeholder:text-white/25"
+                  />
+                  <Button className="h-11 rounded-xl bg-white px-3 text-ink hover:bg-white/90" onClick={() => addListener()} aria-label="Log listener message">
+                    <Plus className="size-4" />
+                  </Button>
+                </div>
+                {listeners.suggestNames(listenerName).length > 0 && (
+                  <div className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-xl border border-white/15 bg-[#14151d] shadow-2xl">
+                    {listeners.suggestNames(listenerName).map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => addListener(name)}
+                        className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-left text-sm font-semibold transition-colors hover:bg-white/10"
+                      >
+                        <span>{name}</span>
+                        <span className="text-[10px] font-medium text-white/40">
+                          {listeners.allTime[name.toLowerCase().replace(/\s+/g, " ").trim()] ?? 0} all time · tap to log
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {keeperNotice && <p className="mt-2 rounded-lg bg-emerald-400/15 px-3 py-2 text-xs font-semibold text-emerald-200">{keeperNotice}</p>}
               <div className="mt-3 space-y-2">
                 {listeners.entries.length ? listeners.entries.map((entry) => {
                   const allTime = listeners.allTime[entry.name.toLowerCase().replace(/\s+/g, " ").trim()]
+                  const sourceSummary = Object.entries(entry.sourceCounts ?? {})
+                    .map(([key, count]) => `${count} ${listenerSources.find((option) => option.value === key)?.label ?? key}`)
+                    .join(" · ")
                   return (
-                    <div key={entry.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2.5">
-                      <button
-                        type="button"
-                        onClick={() => listeners.logMessage(entry.name)}
-                        className="grid size-9 shrink-0 place-items-center rounded-lg bg-white/10 font-mono text-sm font-bold transition-colors hover:bg-white hover:text-ink"
-                        aria-label={`Another message from ${entry.name}`}
-                        title="Tap when they message again"
-                      >
-                        {entry.messageCount}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold">{entry.name}</p>
-                        {allTime && allTime > entry.messageCount && (
-                          <p className="text-[10px] text-white/40">{allTime} messages all time</p>
-                        )}
+                    <div key={entry.id} className="rounded-xl border border-white/10 bg-black/20 p-2.5">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => listeners.logMessage(entry.name, source)}
+                          className="grid size-9 shrink-0 place-items-center rounded-lg bg-white/10 font-mono text-sm font-bold transition-colors hover:bg-white hover:text-ink"
+                          aria-label={`Another message from ${entry.name}`}
+                          title="Tap when they message again"
+                        >
+                          {entry.messageCount}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold">{entry.name}</p>
+                          <p className="truncate text-[10px] text-white/40">
+                            {[sourceSummary, allTime && allTime > entry.messageCount ? `${allTime} all time` : ""].filter(Boolean).join(" · ")}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setKeeperFor(keeperFor === entry.name ? "" : entry.name)
+                            setKeeperText("")
+                            setKeeperTag("keeper")
+                          }}
+                          aria-label={`Save something for ${entry.name}`}
+                          title="Save a birthday, favourite song or keeper message"
+                          className={cn(
+                            "grid size-9 place-items-center rounded-lg transition-colors",
+                            keeperFor === entry.name ? "bg-amber-300 text-ink" : "text-white/30 hover:bg-white/10 hover:text-amber-200"
+                          )}
+                        >
+                          <Star className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => listeners.removeEntry(entry.id)}
+                          aria-label={`Remove ${entry.name}`}
+                          className="grid size-8 place-items-center rounded-lg text-white/30 transition-colors hover:bg-white/10 hover:text-white"
+                        >
+                          <X className="size-3.5" />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => listeners.removeEntry(entry.id)}
-                        aria-label={`Remove ${entry.name}`}
-                        className="grid size-8 place-items-center rounded-lg text-white/30 transition-colors hover:bg-white/10 hover:text-white"
-                      >
-                        <X className="size-3.5" />
-                      </button>
+                      {keeperFor === entry.name && (
+                        <div className="mt-2 space-y-2 rounded-lg border border-amber-300/20 bg-amber-300/[0.06] p-2.5">
+                          <div className="inline-flex w-full rounded-lg border border-white/10 bg-black/20 p-0.5">
+                            {keeperTags.map((tag) => (
+                              <button
+                                key={tag.value}
+                                type="button"
+                                aria-pressed={keeperTag === tag.value}
+                                onClick={() => setKeeperTag(tag.value)}
+                                className={cn(
+                                  "min-h-8 flex-1 rounded-md px-1.5 text-[10px] font-semibold transition-colors",
+                                  keeperTag === tag.value ? "bg-amber-300 text-ink" : "text-white/45 hover:text-white"
+                                )}
+                              >
+                                {tag.label}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              value={keeperText}
+                              onChange={(event) => setKeeperText(event.target.value)}
+                              onKeyDown={(event) => { if (event.key === "Enter") void saveKeeper() }}
+                              placeholder={keeperTag === "birthday" ? "e.g. 14 March" : keeperTag === "favourite-song" ? "Song and artist" : "What did they send?"}
+                              className="h-10 rounded-lg border-white/10 bg-black/25 text-sm text-white placeholder:text-white/25"
+                            />
+                            <Button size="sm" className="h-10 rounded-lg bg-amber-300 px-3 text-ink hover:bg-amber-200" onClick={() => void saveKeeper()}>
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 }) : (
                   <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-xs leading-5 text-white/35">
-                    Add a name when someone messages in. Tap their number each time they message again, and shout them out when it feels right.
+                    Add a name when someone messages in. Tap their number each time they message again, and star anything worth remembering… birthdays, favourite songs, special messages.
                   </p>
                 )}
               </div>
@@ -565,6 +725,14 @@ export function UsableOnAir() {
               </Button>
               <Button variant="outline" className="h-12 rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={!next} onClick={() => moveToItem(activeIndex + 1)}>Next<ArrowRight /></Button>
             </>
+          ) : prompter === "countdown" ? (
+            <Button
+              variant="outline"
+              className="mx-auto h-12 rounded-xl border-white/15 bg-white/5 px-8 text-white hover:bg-white/10 hover:text-white"
+              onClick={stopPrompter}
+            >
+              <Square className="size-4" />Cancel… scrolling in {countdown}
+            </Button>
           ) : (
             <>
               <Button

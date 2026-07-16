@@ -2,6 +2,13 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.10 · Listener profiles · 16 July 2026
+
+- Start typing a name On Air and known listeners are suggested… tap a suggestion and the message logs against them instantly.
+- Every message carries its source: WhatsApp, Instagram or Text. Insights shows how each channel builds over time.
+- Listener profiles: star any message On Air to save a birthday, favourite song or keeper message against that person. Tap a regular in Insights to see and edit their profile and saved messages.
+- New five second countdown on Start reading: press it, fire the music, and the script starts scrolling as you sit back down. Tap anywhere to cancel.
+
 ## v2.9 · Reading view refined · 16 July 2026
 
 - The link counter on the On Air screen is now big and unmissable: hour, link number out of the hour, and position in the whole show, right beside the link title.

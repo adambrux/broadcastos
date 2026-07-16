@@ -48,8 +48,27 @@ export type ListenerLogRow = {
   show_id: string
   show_date: string
   message_count: number
+  source_counts: Record<string, number> | null
   created_at: string
   updated_at: string
+}
+
+export type ListenerProfileRow = {
+  name_key: string
+  display_name: string
+  birthday: string | null
+  favourite_song: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ListenerNoteRow = {
+  id: string
+  name_key: string
+  tag: string
+  content: string
+  show_date: string | null
+  created_at: string
 }
 
 export type PresenterHubLinerRow = {
@@ -182,5 +201,37 @@ export async function ensureListenerLogSchema(sql: BroadcastSql) {
   await sql`
     CREATE INDEX IF NOT EXISTS broadcastos_listener_log_show_idx
     ON broadcastos_listener_log (show_date DESC, show_id)
+  `
+
+  await sql`
+    ALTER TABLE broadcastos_listener_log
+    ADD COLUMN IF NOT EXISTS source_counts JSONB NOT NULL DEFAULT '{}'::jsonb
+  `
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS broadcastos_listener_profiles (
+      name_key TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      birthday TEXT,
+      favourite_song TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS broadcastos_listener_notes (
+      id TEXT PRIMARY KEY,
+      name_key TEXT NOT NULL,
+      tag TEXT NOT NULL DEFAULT 'keeper',
+      content TEXT NOT NULL,
+      show_date TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS broadcastos_listener_notes_name_idx
+    ON broadcastos_listener_notes (name_key, created_at DESC)
   `
 }

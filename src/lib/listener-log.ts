@@ -2,12 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react"
 
+export type ListenerSource = "whatsapp" | "instagram" | "text"
+
+export const listenerSources: { value: ListenerSource; label: string }[] = [
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "instagram", label: "Instagram" },
+  { value: "text", label: "Text" },
+]
+
 export type ListenerEntry = {
   id: string
   name: string
   showId: string
   showDate: string
   messageCount: number
+  sourceCounts?: Record<string, number>
   updatedAt: string
 }
 
@@ -23,6 +32,22 @@ export type ListenerShowSummary = {
   showDate: string
   messages: number
   names: number
+}
+
+export type ListenerNote = {
+  id: string
+  nameKey: string
+  tag: string
+  content: string
+  showDate: string
+  createdAt: string
+}
+
+export type ListenerProfile = {
+  nameKey: string
+  name: string
+  birthday: string
+  favouriteSong: string
 }
 
 export function listenerNameKey(name: string) {
@@ -46,6 +71,10 @@ function writeLocal(showId: string, showDate: string, entries: ListenerEntry[]) 
   window.localStorage.setItem(localKey(showId, showDate), JSON.stringify(entries))
 }
 
+function bumpSource(counts: Record<string, number> | undefined, source: ListenerSource) {
+  return { ...(counts ?? {}), [source]: ((counts ?? {})[source] ?? 0) + 1 }
+}
+
 /**
  * Today's listener roll for one show. Names live on this device instantly and
  * sync to the cloud in the background, so the roll survives a patchy studio
@@ -53,7 +82,7 @@ function writeLocal(showId: string, showDate: string, entries: ListenerEntry[]) 
  */
 export function useListenerLog(showId: string, showDate: string) {
   const [entries, setEntries] = useState<ListenerEntry[]>([])
-  const [allTime, setAllTime] = useState<Record<string, number>>({})
+  const [totals, setTotals] = useState<ListenerTotal[]>([])
 
   useEffect(() => {
     setEntries(readLocal(showId, showDate))
@@ -79,9 +108,7 @@ export function useListenerLog(showId: string, showDate: string) {
             return next
           })
         }
-        if (Array.isArray(data.totals)) {
-          setAllTime(Object.fromEntries(data.totals.map((total) => [listenerNameKey(total.name), total.totalMessages])))
-        }
+        if (Array.isArray(data.totals)) setTotals(data.totals)
       } catch {
         // Offline is fine: the local roll keeps working.
       }
@@ -90,7 +117,7 @@ export function useListenerLog(showId: string, showDate: string) {
     return () => { cancelled = true }
   }, [showDate, showId])
 
-  const logMessage = useCallback((rawName: string) => {
+  const logMessage = useCallback((rawName: string, source: ListenerSource = "whatsapp") => {
     const name = rawName.replace(/\s+/g, " ").trim()
     if (!name) return
     const key = listenerNameKey(name)
@@ -99,7 +126,7 @@ export function useListenerLog(showId: string, showDate: string) {
       const existing = current.find((entry) => listenerNameKey(entry.name) === key)
       const next = existing
         ? current.map((entry) => entry === existing
-          ? { ...entry, messageCount: entry.messageCount + 1, updatedAt: new Date().toISOString() }
+          ? { ...entry, messageCount: entry.messageCount + 1, sourceCounts: bumpSource(entry.sourceCounts, source), updatedAt: new Date().toISOString() }
           : entry)
         : [...current, {
           id: `listener-${Date.now()}`,
@@ -107,18 +134,25 @@ export function useListenerLog(showId: string, showDate: string) {
           showId,
           showDate,
           messageCount: 1,
+          sourceCounts: { [source]: 1 },
           updatedAt: new Date().toISOString(),
         }]
       const sorted = next.sort((a, b) => b.messageCount - a.messageCount)
       writeLocal(showId, showDate, sorted)
       return [...sorted]
     })
-    setAllTime((totals) => ({ ...totals, [key]: (totals[key] ?? 0) + 1 }))
+    setTotals((current) => {
+      const existing = current.find((total) => listenerNameKey(total.name) === key)
+      if (!existing) return [...current, { name, totalMessages: 1, showCount: 1, lastHeard: showDate }]
+      return current.map((total) => total === existing
+        ? { ...total, totalMessages: total.totalMessages + 1, lastHeard: showDate }
+        : total)
+    })
 
     void fetch("/api/listeners", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, showId, showDate }),
+      body: JSON.stringify({ name, showId, showDate, source }),
     }).catch(() => {})
   }, [showDate, showId])
 
@@ -136,7 +170,36 @@ export function useListenerLog(showId: string, showDate: string) {
     })
   }, [showDate, showId])
 
+  const saveKeeper = useCallback(async (name: string, tag: string, content: string) => {
+    const response = await fetch("/api/listener-profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, note: { tag, content, showDate } }),
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => null) as { error?: string } | null
+      throw new Error(data?.error ?? "Could not save that yet.")
+    }
+  }, [showDate])
+
+  /** Names to suggest while typing: all-time regulars plus today's roll. */
+  const suggestNames = useCallback((query: string) => {
+    const needle = listenerNameKey(query)
+    if (!needle) return []
+    const seen = new Set<string>()
+    const names: string[] = []
+    for (const candidate of [...entries.map((entry) => entry.name), ...totals.map((total) => total.name)]) {
+      const key = listenerNameKey(candidate)
+      if (seen.has(key) || key === needle || !key.includes(needle)) continue
+      seen.add(key)
+      names.push(candidate)
+      if (names.length >= 4) break
+    }
+    return names
+  }, [entries, totals])
+
+  const allTime = Object.fromEntries(totals.map((total) => [listenerNameKey(total.name), total.totalMessages]))
   const totalMessages = entries.reduce((sum, entry) => sum + entry.messageCount, 0)
 
-  return { entries, allTime, totalMessages, logMessage, removeEntry }
+  return { entries, totals, allTime, totalMessages, logMessage, removeEntry, saveKeeper, suggestNames }
 }

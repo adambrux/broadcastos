@@ -33,8 +33,16 @@ function entryFromRow(row: ListenerLogRow) {
     showId: row.show_id,
     showDate: row.show_date,
     messageCount: row.message_count,
+    sourceCounts: row.source_counts ?? {},
     updatedAt: row.updated_at,
   }
+}
+
+const knownSources = ["whatsapp", "instagram", "text"] as const
+
+function normaliseSource(value: unknown) {
+  const source = typeof value === "string" ? value.toLowerCase().trim() : ""
+  return (knownSources as readonly string[]).includes(source) ? source : "whatsapp"
 }
 
 export async function GET(request: Request) {
@@ -51,7 +59,7 @@ export async function GET(request: Request) {
 
   const entries = showId && showDate
     ? (await sql`
-        SELECT id, name_key, display_name, show_id, show_date, message_count, created_at, updated_at
+        SELECT id, name_key, display_name, show_id, show_date, message_count, source_counts, created_at, updated_at
         FROM broadcastos_listener_log
         WHERE show_id = ${showId} AND show_date = ${showDate}
         ORDER BY message_count DESC, display_name ASC
@@ -82,6 +90,13 @@ export async function GET(request: Request) {
     LIMIT 40
   ` as ShowRow[]
 
+  const sourceRows = await sql`
+    SELECT key AS source, SUM(value::int)::int AS total
+    FROM broadcastos_listener_log, jsonb_each_text(source_counts)
+    GROUP BY key
+    ORDER BY total DESC
+  ` as { source: string; total: number }[]
+
   const allTime = {
     messages: totals.reduce((sum, row) => sum + row.total_messages, 0),
     listeners: totals.length,
@@ -89,6 +104,7 @@ export async function GET(request: Request) {
 
   return Response.json({
     entries,
+    sources: Object.fromEntries(sourceRows.map((row) => [row.source, row.total])),
     totals: totals.map((row) => ({
       name: row.display_name,
       totalMessages: row.total_messages,
@@ -114,24 +130,30 @@ export async function POST(request: Request) {
 
   await ensureListenerLogSchema(sql)
 
-  const body = await request.json().catch(() => null) as { name?: string; showId?: string; showDate?: string } | null
+  const body = await request.json().catch(() => null) as { name?: string; showId?: string; showDate?: string; source?: string } | null
   const name = typeof body?.name === "string" ? body.name.replace(/\s+/g, " ").trim() : ""
   const showId = typeof body?.showId === "string" && body.showId ? body.showId : "afternoons"
   const showDate = typeof body?.showDate === "string" && body.showDate ? body.showDate : new Date().toISOString().slice(0, 10)
+  const source = normaliseSource(body?.source)
 
   if (!name) {
     return Response.json({ error: "A listener name is needed." }, { status: 400 })
   }
 
   const rows = await sql`
-    INSERT INTO broadcastos_listener_log (id, name_key, display_name, show_id, show_date, message_count)
-    VALUES (${crypto.randomUUID()}, ${nameKey(name)}, ${name}, ${showId}, ${showDate}, 1)
+    INSERT INTO broadcastos_listener_log (id, name_key, display_name, show_id, show_date, message_count, source_counts)
+    VALUES (${crypto.randomUUID()}, ${nameKey(name)}, ${name}, ${showId}, ${showDate}, 1, jsonb_build_object(${source}::text, 1))
     ON CONFLICT (name_key, show_id, show_date)
     DO UPDATE SET
       message_count = broadcastos_listener_log.message_count + 1,
+      source_counts = jsonb_set(
+        broadcastos_listener_log.source_counts,
+        ARRAY[${source}::text],
+        to_jsonb(COALESCE((broadcastos_listener_log.source_counts->>${source})::int, 0) + 1)
+      ),
       display_name = ${name},
       updated_at = NOW()
-    RETURNING id, name_key, display_name, show_id, show_date, message_count, created_at, updated_at
+    RETURNING id, name_key, display_name, show_id, show_date, message_count, source_counts, created_at, updated_at
   ` as ListenerLogRow[]
 
   const saved = rows.at(0)
