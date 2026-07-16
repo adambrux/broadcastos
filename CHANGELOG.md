@@ -2,6 +2,11 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.11 · Liners only, everywhere · 16 July 2026
+
+- Fixed script fragments being stored as liners: saving a show online was still using the old keyword guessing. Every route into the liner archive (import, cloud save) now only accepts links structurally marked as liners in the script, with the same one-read-per-show-day counting.
+- Wrongly stored entries cleared from the archive again.
+
 ## v2.10 · Listener profiles · 16 July 2026
 
 - Start typing a name On Air and known listeners are suggested… tap a suggestion and the message logs against them instantly.

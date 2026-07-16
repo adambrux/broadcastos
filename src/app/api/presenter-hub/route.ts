@@ -206,13 +206,12 @@ export async function POST(request: Request) {
       }))
       .filter((liner) => liner.title || liner.script)
 
-    const extracted: LinerArchiveItem[] = structured.length
+    // Show scripts NEVER use keyword extraction: their liner links arrive
+    // structurally. Keyword guessing is only for weekly briefs and single liners.
+    const extracted: LinerArchiveItem[] = structured.length || kind === "show-script"
       ? []
-      : kind === "weekly-brief" || kind === "liner" || kind === "show-script"
-        ? extractLikelyLiners(content, weekStart, id, {
-          showName,
-          usedInShow: kind === "show-script",
-        })
+      : kind === "weekly-brief" || kind === "liner"
+        ? extractLikelyLiners(content, weekStart, id, { showName })
         : []
     if (kind === "liner" && !structured.length && extracted.length === 0) {
       extracted.push(createLinerFromText(content, weekStart, id, { showName }))

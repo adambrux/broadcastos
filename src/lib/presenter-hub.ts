@@ -223,6 +223,28 @@ function readStringField(value: unknown, key: string) {
   return typeof field === "string" ? field : ""
 }
 
+export type ShowPlanLinerLink = { title: string; script: string }
+
+/**
+ * Structural liner detection: liner links are explicitly marked in every show
+ * plan ("LINER LINK ·" titles, [LINER STARTS HERE markers). Only these are
+ * archived as liners… never keyword guesses over the whole script.
+ */
+export function extractLinerLinksFromShowItems(items: unknown[]): ShowPlanLinerLink[] {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => ({ title: readStringField(item, "title"), script: readStringField(item, "script") }))
+    .filter((item) => /liner link|station liner|\bP[12]\b/i.test(item.title) || /\[LINER STARTS HERE/i.test(item.script))
+    .map((item) => {
+      const marker = item.script.match(/\[LINER STARTS HERE[^\]]*\]\s*([\s\S]*)/i)
+      const script = (marker?.[1] ?? item.script).trim()
+      const title = item.title
+        .replace(/^.*?LINER LINK\s*[·:–-]?\s*/i, "")
+        .replace(/\s*\(whole link\)\s*$/i, "")
+        .trim() || item.title
+      return { title, script: script || title }
+    })
+}
+
 export function serialiseShowPlanForPresenterHub(workspace: {
   date?: string
   items?: unknown[]

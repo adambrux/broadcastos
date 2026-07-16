@@ -9,7 +9,7 @@ import {
   type SavedShowWorkspace,
 } from "@/lib/cloud-save-db"
 import {
-  extractLikelyLiners,
+  extractLinerLinksFromShowItems,
   friendlyImportTitle,
   serialiseShowPlanForPresenterHub,
   weekStartFromDate,
@@ -150,10 +150,8 @@ export async function POST(request: Request) {
         content = EXCLUDED.content
     `
 
-    const extracted = extractLikelyLiners(showScriptContent, weekStart, presenterImportId, {
-      showName: showDisplayName,
-      usedInShow: true,
-    })
+    // Only structurally marked liner links are archived… never keyword guesses.
+    const extracted = extractLinerLinksFromShowItems(Array.isArray(workspace.items) ? workspace.items : [])
 
     const existingRows = await sql`
       SELECT id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at
@@ -177,39 +175,44 @@ export async function POST(request: Request) {
       const existing = existingLiners.find((item) => {
         const title = normaliseForMatch(item.title)
         const script = normaliseForMatch(item.script)
-        return title === linerTitle || (title.length > 12 && linerScript.includes(title)) || (linerTitle.length > 12 && script.includes(linerTitle))
+        return title === linerTitle
+          || (title.length > 12 && linerScript.includes(title))
+          || (linerTitle.length > 12 && script.includes(linerTitle))
+          || (linerScript.length > 24 && script.length > 24 && (linerScript.includes(script) || script.includes(linerScript)))
       })
 
       if (existing) {
-        const showsUsed = mergeShows(existing.showsUsed, liner.showsUsed)
-        const extraUsage = liner.showsUsed.some((show) => !existing.showsUsed.includes(show)) ? liner.usageCount : 0
-        const usageCount = Math.max(existing.usageCount, existing.usageCount + extraUsage, liner.usageCount)
+        // One read per show day: saving the same show twice never double-counts.
+        const alreadyCountedToday = existing.lastUsed === showDate
+        const usageCount = alreadyCountedToday ? existing.usageCount : existing.usageCount + 1
+        const showsUsed = mergeShows(existing.showsUsed, [showDisplayName])
 
         await sql`
           UPDATE broadcastos_liner_archive
           SET
             shows_used = ${JSON.stringify(showsUsed)}::jsonb,
             usage_count = ${usageCount},
-            first_used = COALESCE(first_used, ${liner.firstUsed ?? null}),
-            last_used = COALESCE(${liner.lastUsed ?? null}, last_used),
-            status = ${liner.status}
+            first_used = COALESCE(first_used, ${showDate}),
+            last_used = ${showDate},
+            status = 'Active'
           WHERE id = ${existing.id}
         `
       } else {
+        const newLinerId = crypto.randomUUID()
         await sql`
           INSERT INTO broadcastos_liner_archive (id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
           VALUES (
-            ${liner.id},
+            ${newLinerId},
             ${liner.title},
             ${liner.script},
-            ${liner.weekStart},
-            ${liner.sourceImportId ?? null},
-            ${JSON.stringify(liner.showsUsed)}::jsonb,
-            ${liner.usageCount},
-            ${liner.firstUsed ?? null},
-            ${liner.lastUsed ?? null},
-            ${liner.status},
-            ${liner.createdAt}
+            ${weekStart},
+            ${presenterImportId},
+            ${JSON.stringify([showDisplayName])}::jsonb,
+            1,
+            ${showDate},
+            ${showDate},
+            'Active',
+            ${new Date().toISOString()}
           )
           ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
@@ -221,13 +224,13 @@ export async function POST(request: Request) {
             status = EXCLUDED.status
         `
         existingLiners.push({
-          id: liner.id,
+          id: newLinerId,
           title: liner.title,
           script: liner.script,
-          showsUsed: liner.showsUsed,
-          usageCount: liner.usageCount,
-          firstUsed: liner.firstUsed ?? null,
-          lastUsed: liner.lastUsed ?? null,
+          showsUsed: [showDisplayName],
+          usageCount: 1,
+          firstUsed: showDate,
+          lastUsed: showDate,
         })
       }
     }

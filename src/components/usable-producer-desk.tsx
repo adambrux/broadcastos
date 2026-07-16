@@ -30,6 +30,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { StudioAmbient } from "@/components/studio-motion"
 import {
+  extractLinerLinksFromShowItems,
   weekStartFromDate,
   friendlyImportTitle,
   type LinerArchiveItem,
@@ -124,19 +125,6 @@ type CloudSessionMeta = {
 
 function isLinerLink(item: Pick<StudioItem, "title" | "script">) {
   return /liner link|station liner|\bP[12]\b/i.test(item.title) || /\[LINER STARTS HERE/i.test(item.script)
-}
-
-/** Liner links are marked in the script itself, so archiving them needs no guesswork. */
-function linersFromItems(items: Pick<StudioItem, "title" | "script">[]) {
-  return items.filter(isLinerLink).map((item) => {
-    const marker = item.script.match(/\[LINER STARTS HERE[^\]]*\]\s*([\s\S]*)/i)
-    const script = (marker?.[1] ?? item.script).trim()
-    const title = item.title
-      .replace(/^.*?LINER LINK\s*[·:–-]?\s*/i, "")
-      .replace(/\s*\(whole link\)\s*$/i, "")
-      .trim() || item.title
-    return { title, script: script || title }
-  })
 }
 
 function Field({
@@ -442,7 +430,7 @@ export function UsableProducerDesk() {
       },
       messagePrefix
     )
-    void archiveShowPlanImport(showPlanValue, nextShowId, messagePrefix, linersFromItems(importedPlan.items))
+    void archiveShowPlanImport(showPlanValue, nextShowId, messagePrefix, extractLinerLinksFromShowItems(importedPlan.items))
     setSelectedId(importedPlan.items[0]?.id ?? "")
     setShowPlanOpen(false)
   }
