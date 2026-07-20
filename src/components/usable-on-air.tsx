@@ -50,6 +50,7 @@ type PrompterState = "off" | "countdown" | "rolling" | "paused"
 
 const keeperTags = [
   { value: "keeper", label: "Worth keeping" },
+  { value: "prayer", label: "Prayer request" },
   { value: "birthday", label: "Birthday" },
   { value: "favourite-song", label: "Favourite song" },
 ] as const

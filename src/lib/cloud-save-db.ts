@@ -58,6 +58,7 @@ export type ListenerProfileRow = {
   display_name: string
   birthday: string | null
   favourite_song: string | null
+  last_checkin_at: string | null
   created_at: string
   updated_at: string
 }
@@ -68,6 +69,7 @@ export type ListenerNoteRow = {
   tag: string
   content: string
   show_date: string | null
+  followed_up_at: string | null
   created_at: string
 }
 
@@ -233,5 +235,15 @@ export async function ensureListenerLogSchema(sql: BroadcastSql) {
   await sql`
     CREATE INDEX IF NOT EXISTS broadcastos_listener_notes_name_idx
     ON broadcastos_listener_notes (name_key, created_at DESC)
+  `
+
+  await sql`
+    ALTER TABLE broadcastos_listener_profiles
+    ADD COLUMN IF NOT EXISTS last_checkin_at TEXT
+  `
+
+  await sql`
+    ALTER TABLE broadcastos_listener_notes
+    ADD COLUMN IF NOT EXISTS followed_up_at TEXT
   `
 }

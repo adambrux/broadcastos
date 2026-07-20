@@ -40,6 +40,7 @@ export type ListenerNote = {
   tag: string
   content: string
   showDate: string
+  followedUpAt: string
   createdAt: string
 }
 
@@ -48,6 +49,108 @@ export type ListenerProfile = {
   name: string
   birthday: string
   favouriteSong: string
+  lastCheckinAt: string
+}
+
+export type MiaListener = {
+  name: string
+  nameKey: string
+  daysQuiet: number
+  lastHeard: string
+  totalMessages: number
+}
+
+const dayMs = 24 * 60 * 60 * 1000
+
+function daysSince(value: string) {
+  const date = new Date(value.length === 10 ? `${value}T12:00:00` : value)
+  if (Number.isNaN(date.getTime())) return 0
+  return Math.floor((Date.now() - date.getTime()) / dayMs)
+}
+
+/**
+ * Missing in action: family not heard from in over a week. A personal check-in
+ * clears them; if they stay silent, they gently resurface a fortnight later so
+ * nobody slips away unnoticed.
+ */
+export function computeMia(totals: ListenerTotal[], profiles: ListenerProfile[]): MiaListener[] {
+  return totals
+    .map((total) => {
+      const key = listenerNameKey(total.name)
+      const profile = profiles.find((item) => item.nameKey === key)
+      const daysQuiet = daysSince(total.lastHeard)
+      const checkinDays = profile?.lastCheckinAt ? daysSince(profile.lastCheckinAt) : null
+      const checkedInSinceQuiet = checkinDays !== null && checkinDays < daysQuiet
+      const needsCare = daysQuiet > 7 && (!checkedInSinceQuiet || (checkinDays !== null && checkinDays > 14))
+      return needsCare ? { name: total.name, nameKey: key, daysQuiet, lastHeard: total.lastHeard, totalMessages: total.totalMessages } : null
+    })
+    .filter((item): item is MiaListener => item !== null)
+    .sort((a, b) => b.daysQuiet - a.daysQuiet)
+}
+
+/** Pastoral care state: the MIA list and prayer requests awaiting offline follow-up. */
+export function usePastoralCare() {
+  const [totals, setTotals] = useState<ListenerTotal[]>([])
+  const [profiles, setProfiles] = useState<ListenerProfile[]>([])
+  const [notes, setNotes] = useState<ListenerNote[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const [listeners, profileData] = await Promise.all([
+          fetch("/api/listeners", { cache: "no-store" }).then((response) => response.ok ? response.json() : null).catch(() => null),
+          fetch("/api/listener-profiles", { cache: "no-store" }).then((response) => response.ok ? response.json() : null).catch(() => null),
+        ])
+        if (cancelled) return
+        if (listeners?.totals) setTotals(listeners.totals)
+        if (profileData) {
+          setProfiles(profileData.profiles ?? [])
+          setNotes(profileData.notes ?? [])
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [])
+
+  const checkIn = useCallback(async (name: string) => {
+    setProfiles((current) => {
+      const key = listenerNameKey(name)
+      const existing = current.find((item) => item.nameKey === key)
+      const nowIso = new Date().toISOString()
+      return existing
+        ? current.map((item) => item.nameKey === key ? { ...item, lastCheckinAt: nowIso } : item)
+        : [...current, { nameKey: key, name, birthday: "", favouriteSong: "", lastCheckinAt: nowIso }]
+    })
+    await fetch("/api/listener-profiles", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, checkin: true }),
+    }).catch(() => {})
+  }, [])
+
+  const markFollowedUp = useCallback(async (noteId: string) => {
+    setNotes((current) => current.map((note) => note.id === noteId ? { ...note, followedUpAt: new Date().toISOString() } : note))
+    await fetch("/api/listener-profiles", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ noteId, followedUp: true }),
+    }).catch(() => {})
+  }, [])
+
+  const mia = computeMia(totals, profiles)
+  const prayerFollowUps = notes.filter((note) => note.tag === "prayer" && !note.followedUpAt)
+  const nameFor = useCallback((nameKey: string) => {
+    return profiles.find((item) => item.nameKey === nameKey)?.name
+      ?? totals.find((total) => listenerNameKey(total.name) === nameKey)?.name
+      ?? nameKey
+  }, [profiles, totals])
+
+  return { loading, mia, prayerFollowUps, checkIn, markFollowedUp, nameFor }
 }
 
 export function listenerNameKey(name: string) {

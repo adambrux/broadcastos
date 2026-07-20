@@ -6,6 +6,7 @@ import { ArrowRight, BarChart3, Check, Newspaper, Radio, SlidersHorizontal, Tria
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { PastoralCarePanel } from "@/components/pastoral-care-panel"
 import { ShowCountdownBanner } from "@/components/show-countdown-banner"
 import { StudioAmbient } from "@/components/studio-motion"
 import { studioShows, useStudioWorkspace } from "@/lib/studio-workspace"
@@ -32,6 +33,8 @@ export function StudioHome() {
       </header>
 
       <ShowCountdownBanner compact />
+
+      <PastoralCarePanel compact />
 
       <section className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
         <Card className="studio-card-lift rounded-[26px] py-0 shadow-card">

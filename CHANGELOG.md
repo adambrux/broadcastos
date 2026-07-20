@@ -2,6 +2,11 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.13 · Pastoral care · 20 July 2026
+
+- New Missing In Action care list: anyone in the family who's gone quiet for over a week appears on the Today page and in Insights, with how long they've been quiet and their history. Tick "I've checked in" after your personal WhatsApp and they leave the list… and if they stay silent, they gently resurface a fortnight later so nobody slips away unnoticed.
+- Prayer requests now have their own path: star a message On Air as a Prayer Request and it joins a follow-up queue on Today and Insights until you've reached out personally. The request stays on their profile afterwards, so future conversations remember what they were carrying.
+
 ## v2.12 · The script sets the date · 16 July 2026
 
 - Importing a show plan now reads the broadcast date from the script itself and sets it everywhere: the workspace, liner read dates and cloud saves all land on the right day and week automatically. No more stale dates filing liners under the wrong week.
