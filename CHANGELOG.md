@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.14 · Family memory · 20 July 2026
+
+- On Air listener rows now have plus and minus buttons… tap to count another message or undo a slip, no retyping names ever.
+- Each listener's row shows their most recent starred message right there while you're on air… an open prayer request takes priority, so you can refer to what they're carrying when you read their name.
+- Pastoral care now keeps its history: a "Cared for" section in Insights lists every followed-up prayer request with when it came in and when you reached out.
+
 ## v2.13 · Pastoral care · 20 July 2026
 
 - New Missing In Action care list: anyone in the family who's gone quiet for over a week appears on the Today page and in Insights, with how long they've been quiet and their history. Tick "I've checked in" after your personal WhatsApp and they leave the list… and if they stay silent, they gently resurface a fortnight later so nobody slips away unnoticed.

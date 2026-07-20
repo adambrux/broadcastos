@@ -130,11 +130,12 @@ export async function POST(request: Request) {
 
   await ensureListenerLogSchema(sql)
 
-  const body = await request.json().catch(() => null) as { name?: string; showId?: string; showDate?: string; source?: string } | null
+  const body = await request.json().catch(() => null) as { name?: string; showId?: string; showDate?: string; source?: string; delta?: number } | null
   const name = typeof body?.name === "string" ? body.name.replace(/\s+/g, " ").trim() : ""
   const showId = typeof body?.showId === "string" && body.showId ? body.showId : "afternoons"
   const showDate = typeof body?.showDate === "string" && body.showDate ? body.showDate : new Date().toISOString().slice(0, 10)
   const source = normaliseSource(body?.source)
+  const delta = body?.delta === -1 ? -1 : 1
 
   if (!name) {
     return Response.json({ error: "A listener name is needed." }, { status: 400 })
@@ -145,11 +146,11 @@ export async function POST(request: Request) {
     VALUES (${crypto.randomUUID()}, ${nameKey(name)}, ${name}, ${showId}, ${showDate}, 1, jsonb_build_object(${source}::text, 1))
     ON CONFLICT (name_key, show_id, show_date)
     DO UPDATE SET
-      message_count = broadcastos_listener_log.message_count + 1,
+      message_count = GREATEST(1, broadcastos_listener_log.message_count + ${delta}),
       source_counts = jsonb_set(
         broadcastos_listener_log.source_counts,
         ARRAY[${source}::text],
-        to_jsonb(COALESCE((broadcastos_listener_log.source_counts->>${source})::int, 0) + 1)
+        to_jsonb(GREATEST(0, COALESCE((broadcastos_listener_log.source_counts->>${source})::int, 0) + ${delta}))
       ),
       display_name = ${name},
       updated_at = NOW()

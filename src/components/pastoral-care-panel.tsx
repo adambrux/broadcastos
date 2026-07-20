@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { Check, HandHeart, HeartHandshake, MessageCircleHeart } from "lucide-react"
+import { useState } from "react"
+import { Check, ChevronDown, HandHeart, HeartHandshake, MessageCircleHeart } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -20,6 +21,7 @@ function formatDate(value: string) {
  */
 export function PastoralCarePanel({ compact = false }: { compact?: boolean }) {
   const care = usePastoralCare()
+  const [showHistory, setShowHistory] = useState(false)
   const miaShown = compact ? care.mia.slice(0, 4) : care.mia
   const prayersShown = compact ? care.prayerFollowUps.slice(0, 3) : care.prayerFollowUps
   const nothingWaiting = !care.loading && care.mia.length === 0 && care.prayerFollowUps.length === 0
@@ -109,6 +111,36 @@ export function PastoralCarePanel({ compact = false }: { compact?: boolean }) {
                 <p className="px-1 text-xs text-muted-foreground">+ {care.prayerFollowUps.length - prayersShown.length} more in Insights</p>
               )}
             </div>
+          </div>
+        )}
+
+        {!compact && care.followedUpPrayers.length > 0 && (
+          <div className="mt-5">
+            <button
+              type="button"
+              onClick={() => setShowHistory((open) => !open)}
+              className="flex w-full items-center justify-between rounded-xl bg-white/60 px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground transition-colors hover:bg-white"
+              aria-expanded={showHistory}
+            >
+              <span>Cared for · {care.followedUpPrayers.length} followed-up prayer request{care.followedUpPrayers.length === 1 ? "" : "s"}</span>
+              <ChevronDown className={cn("size-4 transition-transform", showHistory && "rotate-180")} />
+            </button>
+            {showHistory && (
+              <div className="mt-2 space-y-2">
+                {care.followedUpPrayers.map((note) => (
+                  <div key={note.id} className="flex items-start gap-3 rounded-2xl border bg-white/70 p-3">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700"><Check className="size-4" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">{care.nameFor(note.nameKey)}</p>
+                      <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{note.content}</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {note.showDate ? `From the show on ${formatDate(note.showDate)} · ` : ""}Followed up {formatDate(note.followedUpAt)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

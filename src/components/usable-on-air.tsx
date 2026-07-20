@@ -10,7 +10,9 @@ import {
   Check,
   CheckCircle2,
   LockKeyhole,
+  HandHeart,
   MessageCircle,
+  Minus,
   Play,
   Plus,
   Radio,
@@ -620,18 +622,31 @@ export function UsableOnAir() {
                   const sourceSummary = Object.entries(entry.sourceCounts ?? {})
                     .map(([key, count]) => `${count} ${listenerSources.find((option) => option.value === key)?.label ?? key}`)
                     .join(" · ")
+                  const latestNote = listeners.latestNoteFor(entry.name)
                   return (
                     <div key={entry.id} className="rounded-xl border border-white/10 bg-black/20 p-2.5">
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => listeners.logMessage(entry.name, source)}
-                          className="grid size-9 shrink-0 place-items-center rounded-lg bg-white/10 font-mono text-sm font-bold transition-colors hover:bg-white hover:text-ink"
-                          aria-label={`Another message from ${entry.name}`}
-                          title="Tap when they message again"
-                        >
-                          {entry.messageCount}
-                        </button>
+                        <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.06]">
+                          <button
+                            type="button"
+                            onClick={() => listeners.logMessage(entry.name, source, -1)}
+                            disabled={entry.messageCount <= 1}
+                            className="grid size-9 place-items-center text-white/45 transition-colors hover:bg-white/15 hover:text-white disabled:opacity-25"
+                            aria-label={`Remove one message from ${entry.name}`}
+                          >
+                            <Minus className="size-3.5" />
+                          </button>
+                          <span className="grid min-w-8 place-items-center font-mono text-sm font-bold">{entry.messageCount}</span>
+                          <button
+                            type="button"
+                            onClick={() => listeners.logMessage(entry.name, source)}
+                            className="grid size-9 place-items-center text-white/70 transition-colors hover:bg-white hover:text-ink"
+                            aria-label={`Another message from ${entry.name}`}
+                            title="Tap when they message again"
+                          >
+                            <Plus className="size-3.5" />
+                          </button>
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold">{entry.name}</p>
                           <p className="truncate text-[10px] text-white/40">
@@ -663,6 +678,20 @@ export function UsableOnAir() {
                           <X className="size-3.5" />
                         </button>
                       </div>
+                      {latestNote && (
+                        <p className={cn(
+                          "mt-1.5 flex items-start gap-1.5 rounded-lg px-2 py-1.5 text-[11px] leading-4",
+                          latestNote.tag === "prayer" && !latestNote.followedUpAt
+                            ? "bg-violet-400/15 text-violet-100"
+                            : "bg-white/[0.05] text-white/55"
+                        )}>
+                          {latestNote.tag === "prayer" ? <HandHeart className="mt-0.5 size-3 shrink-0" /> : <Star className="mt-0.5 size-3 shrink-0" />}
+                          <span className="min-w-0">
+                            <span className="font-semibold">{latestNote.tag === "prayer" ? "Prayed for: " : latestNote.tag === "birthday" ? "Birthday: " : latestNote.tag === "favourite-song" ? "Favourite song: " : "Keeper: "}</span>
+                            {latestNote.content}
+                          </span>
+                        </p>
+                      )}
                       {keeperFor === entry.name && (
                         <div className="mt-2 space-y-2 rounded-lg border border-amber-300/20 bg-amber-300/[0.06] p-2.5">
                           <div className="inline-flex w-full rounded-lg border border-white/10 bg-black/20 p-0.5">

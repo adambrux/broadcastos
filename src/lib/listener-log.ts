@@ -144,13 +144,16 @@ export function usePastoralCare() {
 
   const mia = computeMia(totals, profiles)
   const prayerFollowUps = notes.filter((note) => note.tag === "prayer" && !note.followedUpAt)
+  const followedUpPrayers = notes
+    .filter((note) => note.tag === "prayer" && note.followedUpAt)
+    .sort((a, b) => b.followedUpAt.localeCompare(a.followedUpAt))
   const nameFor = useCallback((nameKey: string) => {
     return profiles.find((item) => item.nameKey === nameKey)?.name
       ?? totals.find((total) => listenerNameKey(total.name) === nameKey)?.name
       ?? nameKey
   }, [profiles, totals])
 
-  return { loading, mia, prayerFollowUps, checkIn, markFollowedUp, nameFor }
+  return { loading, mia, prayerFollowUps, followedUpPrayers, checkIn, markFollowedUp, nameFor }
 }
 
 export function listenerNameKey(name: string) {
@@ -174,8 +177,8 @@ function writeLocal(showId: string, showDate: string, entries: ListenerEntry[]) 
   window.localStorage.setItem(localKey(showId, showDate), JSON.stringify(entries))
 }
 
-function bumpSource(counts: Record<string, number> | undefined, source: ListenerSource) {
-  return { ...(counts ?? {}), [source]: ((counts ?? {})[source] ?? 0) + 1 }
+function bumpSource(counts: Record<string, number> | undefined, source: ListenerSource, delta: 1 | -1 = 1) {
+  return { ...(counts ?? {}), [source]: Math.max(0, ((counts ?? {})[source] ?? 0) + delta) }
 }
 
 /**
@@ -186,6 +189,7 @@ function bumpSource(counts: Record<string, number> | undefined, source: Listener
 export function useListenerLog(showId: string, showDate: string) {
   const [entries, setEntries] = useState<ListenerEntry[]>([])
   const [totals, setTotals] = useState<ListenerTotal[]>([])
+  const [notes, setNotes] = useState<ListenerNote[]>([])
 
   useEffect(() => {
     setEntries(readLocal(showId, showDate))
@@ -193,12 +197,17 @@ export function useListenerLog(showId: string, showDate: string) {
     let cancelled = false
     async function pull() {
       try {
-        const response = await fetch(`/api/listeners?showId=${encodeURIComponent(showId)}&showDate=${encodeURIComponent(showDate)}`, { cache: "no-store" })
-        if (!response.ok) return
-        const data = await response.json() as { entries?: ListenerEntry[]; totals?: ListenerTotal[] }
+        const [data, profileData] = await Promise.all([
+          fetch(`/api/listeners?showId=${encodeURIComponent(showId)}&showDate=${encodeURIComponent(showDate)}`, { cache: "no-store" })
+            .then((response) => response.ok ? response.json() as Promise<{ entries?: ListenerEntry[]; totals?: ListenerTotal[] }> : null)
+            .catch(() => null),
+          fetch("/api/listener-profiles", { cache: "no-store" })
+            .then((response) => response.ok ? response.json() as Promise<{ notes?: ListenerNote[] }> : null)
+            .catch(() => null),
+        ])
         if (cancelled) return
 
-        if (Array.isArray(data.entries)) {
+        if (Array.isArray(data?.entries)) {
           setEntries((local) => {
             const merged = new Map<string, ListenerEntry>()
             for (const entry of [...local, ...data.entries!]) {
@@ -211,7 +220,8 @@ export function useListenerLog(showId: string, showDate: string) {
             return next
           })
         }
-        if (Array.isArray(data.totals)) setTotals(data.totals)
+        if (Array.isArray(data?.totals)) setTotals(data.totals)
+        if (Array.isArray(profileData?.notes)) setNotes(profileData.notes)
       } catch {
         // Offline is fine: the local roll keeps working.
       }
@@ -220,16 +230,22 @@ export function useListenerLog(showId: string, showDate: string) {
     return () => { cancelled = true }
   }, [showDate, showId])
 
-  const logMessage = useCallback((rawName: string, source: ListenerSource = "whatsapp") => {
+  const logMessage = useCallback((rawName: string, source: ListenerSource = "whatsapp", delta: 1 | -1 = 1) => {
     const name = rawName.replace(/\s+/g, " ").trim()
     if (!name) return
     const key = listenerNameKey(name)
 
     setEntries((current) => {
       const existing = current.find((entry) => listenerNameKey(entry.name) === key)
+      if (!existing && delta === -1) return current
       const next = existing
         ? current.map((entry) => entry === existing
-          ? { ...entry, messageCount: entry.messageCount + 1, sourceCounts: bumpSource(entry.sourceCounts, source), updatedAt: new Date().toISOString() }
+          ? {
+            ...entry,
+            messageCount: Math.max(1, entry.messageCount + delta),
+            sourceCounts: bumpSource(entry.sourceCounts, source, delta),
+            updatedAt: new Date().toISOString(),
+          }
           : entry)
         : [...current, {
           id: `listener-${Date.now()}`,
@@ -246,18 +262,27 @@ export function useListenerLog(showId: string, showDate: string) {
     })
     setTotals((current) => {
       const existing = current.find((total) => listenerNameKey(total.name) === key)
-      if (!existing) return [...current, { name, totalMessages: 1, showCount: 1, lastHeard: showDate }]
+      if (!existing) return delta === 1 ? [...current, { name, totalMessages: 1, showCount: 1, lastHeard: showDate }] : current
       return current.map((total) => total === existing
-        ? { ...total, totalMessages: total.totalMessages + 1, lastHeard: showDate }
+        ? { ...total, totalMessages: Math.max(1, total.totalMessages + delta), lastHeard: showDate }
         : total)
     })
 
     void fetch("/api/listeners", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, showId, showDate, source }),
+      body: JSON.stringify({ name, showId, showDate, source, delta }),
     }).catch(() => {})
   }, [showDate, showId])
+
+  /** The most recent starred note for a listener… prayer requests first, so they can be referred to on air. */
+  const latestNoteFor = useCallback((name: string): ListenerNote | undefined => {
+    const key = listenerNameKey(name)
+    const theirs = notes
+      .filter((note) => note.nameKey === key)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return theirs.find((note) => note.tag === "prayer" && !note.followedUpAt) ?? theirs[0]
+  }, [notes])
 
   const removeEntry = useCallback((id: string) => {
     setEntries((current) => {
@@ -279,10 +304,11 @@ export function useListenerLog(showId: string, showDate: string) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, note: { tag, content, showDate } }),
     })
+    const data = await response.json().catch(() => null) as { note?: ListenerNote; error?: string } | null
     if (!response.ok) {
-      const data = await response.json().catch(() => null) as { error?: string } | null
       throw new Error(data?.error ?? "Could not save that yet.")
     }
+    if (data?.note) setNotes((current) => [data.note!, ...current])
   }, [showDate])
 
   /** Names to suggest while typing: all-time regulars plus today's roll. */
@@ -304,5 +330,5 @@ export function useListenerLog(showId: string, showDate: string) {
   const allTime = Object.fromEntries(totals.map((total) => [listenerNameKey(total.name), total.totalMessages]))
   const totalMessages = entries.reduce((sum, entry) => sum + entry.messageCount, 0)
 
-  return { entries, totals, allTime, totalMessages, logMessage, removeEntry, saveKeeper, suggestNames }
+  return { entries, totals, allTime, totalMessages, logMessage, removeEntry, saveKeeper, suggestNames, latestNoteFor }
 }
