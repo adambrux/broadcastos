@@ -2,6 +2,13 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.15 · Made for live · 20 July 2026
+
+- Find your place instantly: the words either side of every interaction marker in a script now glow green, so coming back from the WhatsApp screen your eyes land exactly where you left off.
+- Scripts breathe: every sentence renders on its own line, and question or answer numbers are highlighted in violet so the payoff parade scans at a glance.
+- New game scoreboard on the On Air page: add players as answers arrive (with name suggestions), tap each question box to mark right or wrong, and the ranking sorts itself live… winners declared without counting through the WhatsApp scroll.
+- The end-of-show Zetta warning now flashes, and repeats right under the script on the final link until the studio reset is confirmed.
+
 ## v2.14 · Family memory · 20 July 2026
 
 - On Air listener rows now have plus and minus buttons… tap to count another message or undo a slip, no retyping names ever.

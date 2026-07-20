@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { StudioLivePill } from "@/components/app-shell"
 import { openAppSplash } from "@/components/app-splash-screen"
+import { GameScoreboard } from "@/components/game-scoreboard"
 import { LaunchSequenceBody, LaunchSequenceIndicator } from "@/components/show-launch-sequence"
 import { StudioAmbient } from "@/components/studio-motion"
 import { useLaunchSequence } from "@/lib/launch-sequence"
@@ -44,6 +45,83 @@ import { cn } from "@/lib/utils"
 function isLinerLink(item?: { title?: string; script?: string }) {
   if (!item) return false
   return /liner link|station liner|\bP[12]\b/i.test(item.title ?? "") || /\[LINER STARTS HERE/i.test(item.script ?? "")
+}
+
+const handoffWordClass = "font-bold text-emerald-300"
+const numberTokenPattern = /^((?:answer|question|number|round|q)\s*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b\s*[:.…]*|\d+[\).]\s*)/i
+
+/** Renders a fragment of script text, colouring the word next to an interaction marker green. */
+function renderTextPart(part: string, key: string, greenFirstWord: boolean, greenLastWord: boolean, highlightNumbers: boolean) {
+  const nodes: React.ReactNode[] = []
+  let remaining = part
+
+  if (highlightNumbers) {
+    const numberMatch = remaining.match(numberTokenPattern)
+    if (numberMatch) {
+      nodes.push(<span key={`${key}-num`} className="font-bold text-violet-300">{numberMatch[1]}</span>)
+      remaining = remaining.slice(numberMatch[1].length)
+    }
+  }
+
+  let head = ""
+  let firstWord = ""
+  if (greenFirstWord) {
+    const match = remaining.match(/^(\s*)(\S+)([\s\S]*)$/)
+    if (match) {
+      head = match[1]
+      firstWord = match[2]
+      remaining = match[3]
+    }
+  }
+
+  let lastWord = ""
+  let tail = ""
+  if (greenLastWord) {
+    const match = remaining.match(/^([\s\S]*?)(\S+)(\s*)$/)
+    if (match) {
+      remaining = match[1]
+      lastWord = match[2]
+      tail = match[3]
+    }
+  }
+
+  if (head) nodes.push(head)
+  if (firstWord) nodes.push(<span key={`${key}-first`} className={handoffWordClass}>{firstWord}</span>)
+  if (remaining) nodes.push(remaining)
+  if (lastWord) nodes.push(<span key={`${key}-last`} className={handoffWordClass}>{lastWord}</span>)
+  if (tail) nodes.push(tail)
+  return nodes
+}
+
+/**
+ * Script text renderer for On Air: each line becomes its own paragraph,
+ * [bracketed directions] become pills with the words either side of them
+ * coloured green (the eyes-back-from-WhatsApp anchor), and leading
+ * question/answer numbers are highlighted so the payoff parade scans.
+ */
+function renderScript(text: string) {
+  return text.split("\n").filter((line) => line.trim().length > 0).map((line, lineIndex) => {
+    const parts = line.split(/(\[[^\]]*\])/g).filter((part) => part.length > 0)
+    return (
+      <p key={lineIndex} className="mb-3 last:mb-0">
+        {parts.map((part, partIndex) => {
+          if (part.startsWith("[") && part.endsWith("]")) {
+            return (
+              <span
+                key={partIndex}
+                className="mx-1.5 inline-block max-w-full rounded-lg border border-emerald-300/40 bg-emerald-400/[0.12] px-2.5 py-1 align-middle text-[0.5em] font-bold uppercase leading-snug tracking-[0.08em] text-emerald-200"
+              >
+                {part.slice(1, -1)}
+              </span>
+            )
+          }
+          const prevIsMarker = partIndex > 0 && parts[partIndex - 1].startsWith("[")
+          const nextIsMarker = partIndex < parts.length - 1 && parts[partIndex + 1].startsWith("[")
+          return renderTextPart(part, `${lineIndex}-${partIndex}`, prevIsMarker, nextIsMarker, partIndex === 0)
+        })}
+      </p>
+    )
+  })
 }
 
 const wordsPerMinute = 150
@@ -411,7 +489,10 @@ export function UsableOnAir() {
 
       <main className="relative mx-auto max-w-[1500px] space-y-4 px-5 pb-32 pt-4 sm:px-8">
         {isLastItem && (
-          <section className="rounded-[24px] border border-amber-300/30 bg-amber-300/[0.12] p-5">
+          <section className={cn(
+            "rounded-[24px] border border-amber-300/30 bg-amber-300/[0.12] p-5",
+            !studioResetConfirmed && "animate-pulse"
+          )}>
             <div className="flex gap-4">
               <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-300 text-ink">
                 <AlertTriangle className="size-5" />
@@ -522,7 +603,7 @@ export function UsableOnAir() {
                           <p className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${step.labelClassName}`}>{step.label}</p>
                           <span className="text-[10px] text-white/30">· {step.helper}</span>
                         </div>
-                        <p className={`mt-3 whitespace-pre-wrap ${step.textClassName}`}>{step.text}</p>
+                        <div className={`mt-3 ${step.textClassName}`}>{renderScript(step.text)}</div>
                       </div>
                     </div>
                   </section>
@@ -530,6 +611,15 @@ export function UsableOnAir() {
                 </div>
               )}
             </article>
+
+            {isLastItem && !studioResetConfirmed && (
+              <div className="animate-pulse rounded-[22px] border-2 border-amber-300/60 bg-amber-300/[0.15] p-4">
+                <p className="flex items-center gap-3 text-base font-bold text-amber-100">
+                  <AlertTriangle className="size-5 shrink-0 text-amber-300" />
+                  ZETTA: Live Assist back to AUTO after this link. Mic down. Channel 3 down.
+                </p>
+              </div>
+            )}
 
             {current.notes && (
               <div className="rounded-[22px] border border-white/10 bg-white/[0.045] p-5">
@@ -550,6 +640,8 @@ export function UsableOnAir() {
           </section>
 
           <aside className="space-y-4">
+            <GameScoreboard showId={workspace.showId} showDate={showDate} suggest={listeners.suggestNames} />
+
             <div className="rounded-[22px] border border-white/10 bg-white/[0.045] p-5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">Up next</p>
               {next ? (
