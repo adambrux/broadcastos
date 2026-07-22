@@ -333,8 +333,8 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
 
       if (
         responseGate &&
-        !clean(fields.script).match(/\b(message|messages|response|responses|reply|replies|whatsapp|text|voice note)\b/i) &&
-        !/\[(?:read|play|include)\b/i.test(clean(fields.script))
+        !clean(fields.script).match(/\b(message|messages|response|responses|reply|replies|whatsapp|text|voice note|chat|inbox|i see you|gets read|final read|last call|everybody gets heard)\b/i) &&
+        !/\[(?:read|play|include|name)\b/i.test(clean(fields.script))
       ) {
         warnings.push(`${item.title}: Response Gate is on, but The Moment · If Responses does not obviously reference listener responses.`)
       }
@@ -357,7 +357,7 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
     warnings.push("No PRE-SHOW PROMO section found. Script Format v2 expects one at the end of every plan.")
   } else {
     if (!preShowPromo.whatsappStatus) warnings.push("PRE-SHOW PROMO is missing a WhatsApp status message.")
-    if (!preShowPromo.videoScript) warnings.push("PRE-SHOW PROMO is missing a 30-second video/story script.")
+    // Promo format v2 (22 July 2026): one simple statement only… the video script is retired, so its absence is never a warning.
   }
 
   return { items, warnings, metadata, showId, date, preShowPromo }

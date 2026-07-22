@@ -2,6 +2,10 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.16 · Import knows the rules · 22 July 2026
+
+- The importer caught up with the new show rules: presence-style gate links ("I see you in the chat…") no longer trigger a false warning, and the retired 30-second promo video script is no longer expected… the simple one-statement promo imports clean.
+
 ## v2.15 · Made for live · 20 July 2026
 
 - Find your place instantly: the words either side of every interaction marker in a script now glow green, so coming back from the WhatsApp screen your eyes land exactly where you left off.
