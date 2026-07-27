@@ -69,9 +69,10 @@ function daysSince(value: string) {
 }
 
 /**
- * Missing in action: family not heard from in over a week. A personal check-in
- * clears them; if they stay silent, they gently resurface a fortnight later so
- * nobody slips away unnoticed.
+ * Missing in action: family not heard from in over a week. They prompt every
+ * day until a personal check-in; a check-in rests them for three days, then
+ * while they stay silent they resurface every three to four days so nobody
+ * slips away unnoticed.
  */
 export function computeMia(totals: ListenerTotal[], profiles: ListenerProfile[]): MiaListener[] {
   return totals
@@ -81,7 +82,7 @@ export function computeMia(totals: ListenerTotal[], profiles: ListenerProfile[])
       const daysQuiet = daysSince(total.lastHeard)
       const checkinDays = profile?.lastCheckinAt ? daysSince(profile.lastCheckinAt) : null
       const checkedInSinceQuiet = checkinDays !== null && checkinDays < daysQuiet
-      const needsCare = daysQuiet > 7 && (!checkedInSinceQuiet || (checkinDays !== null && checkinDays > 14))
+      const needsCare = daysQuiet > 7 && (!checkedInSinceQuiet || (checkinDays !== null && checkinDays >= 3))
       return needsCare ? { name: total.name, nameKey: key, daysQuiet, lastHeard: total.lastHeard, totalMessages: total.totalMessages } : null
     })
     .filter((item): item is MiaListener => item !== null)

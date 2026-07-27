@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { ChevronDown, Minus, Plus, RotateCcw, Trophy, X } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { ChevronDown, Crown, Minus, Plus, RotateCcw, Trophy, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { arcadeMonthLabel, arcadeShowId, syncArcadeScores, useArcadeMonth } from "@/lib/arcade-leaderboard"
 import { cn } from "@/lib/utils"
 
 type Mark = "" | "y" | "n"
@@ -51,8 +52,13 @@ export function GameScoreboard({
   suggest: (query: string) => string[]
 }) {
   const [state, setState] = useState<ScoreboardState>({ questions: 7, players: [] })
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   const [nameInput, setNameInput] = useState("")
+  const [monthRefresh, setMonthRefresh] = useState(0)
+  const syncTimer = useRef<number | null>(null)
+  const isArcadeShow = showId === arcadeShowId
+  const month = showDate.slice(0, 7)
+  const monthly = useArcadeMonth(month, isArcadeShow, monthRefresh)
 
   useEffect(() => {
     const stored = readState(showId, showDate)
@@ -60,9 +66,23 @@ export function GameScoreboard({
     if (stored.players.length > 0) setOpen(true)
   }, [showId, showDate])
 
+  useEffect(() => () => {
+    if (syncTimer.current !== null) window.clearTimeout(syncTimer.current)
+  }, [])
+
   function save(next: ScoreboardState) {
     setState(next)
     window.localStorage.setItem(storageKey(showId, showDate), JSON.stringify(next))
+    // Mirror the day's board online (Afternoons only) so the monthly
+    // leaderboard is always the latest count without a separate save step.
+    if (!isArcadeShow) return
+    if (syncTimer.current !== null) window.clearTimeout(syncTimer.current)
+    syncTimer.current = window.setTimeout(() => {
+      syncTimer.current = null
+      syncArcadeScores(showDate, next.players.map((player) => ({ name: player.name, points: score(player) })))
+        .then(() => setMonthRefresh((value) => value + 1))
+        .catch(() => {})
+    }, 1200)
   }
 
   function setQuestions(count: number) {
@@ -224,6 +244,41 @@ export function GameScoreboard({
             <p className="rounded-xl border border-dashed border-white/10 p-3 text-center text-xs leading-5 text-white/35">
               Add players as answers arrive, tap each question box to mark right or wrong… the ranking sorts itself.
             </p>
+          )}
+
+          {isArcadeShow && (monthly.data?.standings.length ?? 0) > 0 && (
+            <div className="rounded-xl border border-amber-300/15 bg-black/20 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-200/80">
+                  <Crown className="size-3.5" />{arcadeMonthLabel(monthly.data!.month)} so far
+                </p>
+                <span className="text-[10px] text-white/35">
+                  {monthly.data!.gameDays} game day{monthly.data!.gameDays === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="mt-2 space-y-1">
+                {monthly.data!.standings.slice(0, 5).map((standing, index) => (
+                  <div
+                    key={standing.nameKey}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-2 py-1.5",
+                      index === 0 ? "bg-amber-300/[0.12]" : "bg-white/[0.04]"
+                    )}
+                  >
+                    <span className={cn(
+                      "grid size-5 shrink-0 place-items-center rounded font-mono text-[10px] font-bold",
+                      index === 0 ? "bg-amber-300 text-ink" : "bg-white/10 text-white/55"
+                    )}>{index + 1}</span>
+                    <p className="min-w-0 flex-1 truncate text-xs font-semibold">{standing.name}</p>
+                    <span className="text-[10px] text-white/35">{standing.daysPlayed} day{standing.daysPlayed === 1 ? "" : "s"}</span>
+                    <span className="font-mono text-xs font-bold text-amber-200">{standing.points} pts</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[10px] leading-4 text-white/30">
+                Month totals across every game day… the full table lives in Insights.
+              </p>
+            </div>
           )}
         </div>
       )}

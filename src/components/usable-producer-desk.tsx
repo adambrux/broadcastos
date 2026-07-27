@@ -156,6 +156,7 @@ export function UsableProducerDesk() {
   const [cloudKey, setCloudKey] = useState("")
   const [cloudTitle, setCloudTitle] = useState("")
   const [cloudSessions, setCloudSessions] = useState<CloudSessionMeta[]>([])
+  const [selectedSessionId, setSelectedSessionId] = useState("")
   const [cloudStatus, setCloudStatus] = useState<CloudSaveStatus | null>(null)
   const [cloudBusy, setCloudBusy] = useState(false)
   const [cloudMessage, setCloudMessage] = useState("")
@@ -165,6 +166,7 @@ export function UsableProducerDesk() {
     [selectedId, workspace.items]
   )
   const importedPlan = useMemo(() => parseShowPlanImport(showPlanValue), [showPlanValue])
+  const selectedSession = cloudSessions.find((session) => session.id === selectedSessionId) ?? null
 
   useEffect(() => {
     const storedKey = window.localStorage.getItem(cloudKeyStorageKey) ?? ""
@@ -280,6 +282,7 @@ export function UsableProducerDesk() {
       const data = await response.json().catch(() => null)
       if (data?.status) setCloudStatus(data.status)
       if (!response.ok) throw new Error(data?.error ?? "Could not delete this saved show.")
+      setSelectedSessionId("")
       await refreshCloudSessions("Saved show deleted.")
     } catch (error) {
       setCloudMessage(error instanceof Error ? error.message : "Could not delete this saved show.")
@@ -526,30 +529,40 @@ export function UsableProducerDesk() {
             <div className="flex items-end justify-between gap-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-indigo">Saved Shows</p>
-                <p className="mt-1 text-xs text-muted-foreground">{cloudSessions.length ? `${cloudSessions.length} online session${cloudSessions.length === 1 ? "" : "s"} available` : "No online sessions loaded yet"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{cloudSessions.length ? `${cloudSessions.length} saved show${cloudSessions.length === 1 ? "" : "s"} available` : "No saved shows loaded yet"}</p>
               </div>
             </div>
             {cloudSessions.length > 0 ? (
-              <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                {cloudSessions.map((session) => (
-                  <div key={session.id} className="rounded-2xl border bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">{session.title}</p>
-                        <p className="mt-1 text-[10px] text-muted-foreground">{session.show_date} · {session.item_count} items · updated {new Date(session.updated_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</p>
-                      </div>
-                      <Badge variant="outline" className="shrink-0 text-[9px]">{session.show_id}</Badge>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button size="sm" className="rounded-xl bg-ink text-white hover:bg-ink/90" onClick={() => loadCloudSession(session.id)} disabled={cloudBusy}>
-                        <Download />Load on this device
-                      </Button>
-                      <Button size="sm" variant="outline" className="rounded-xl text-destructive" onClick={() => deleteCloudSession(session.id, session.title)} disabled={cloudBusy}>
-                        <Trash2 />Delete
-                      </Button>
-                    </div>
+              <div className="mt-3 rounded-2xl border bg-white p-4 shadow-sm">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                  <Field label="Choose a show to load">
+                    <select
+                      className={fieldClass}
+                      value={selectedSessionId}
+                      onChange={(event) => setSelectedSessionId(event.target.value)}
+                    >
+                      <option value="">Choose a saved show…</option>
+                      {cloudSessions.map((session) => (
+                        <option key={session.id} value={session.id}>
+                          {session.title} · {session.show_date} · {session.item_count} link{session.item_count === 1 ? "" : "s"}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <div className="flex flex-wrap gap-2">
+                    <Button className="rounded-xl bg-ink text-white hover:bg-ink/90" onClick={() => selectedSession && loadCloudSession(selectedSession.id)} disabled={cloudBusy || !selectedSession}>
+                      <Download />Load on this device
+                    </Button>
+                    <Button variant="outline" className="rounded-xl text-destructive" onClick={() => selectedSession && deleteCloudSession(selectedSession.id, selectedSession.title)} disabled={cloudBusy || !selectedSession}>
+                      <Trash2 />Delete
+                    </Button>
                   </div>
-                ))}
+                </div>
+                {selectedSession && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {studioShows[selectedSession.show_id as StudioShowId]?.name ?? selectedSession.show_id} · last saved {new Date(selectedSession.updated_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+                  </p>
+                )}
               </div>
             ) : (
               <div className="mt-3 rounded-2xl border border-dashed bg-white/70 p-5 text-center text-sm text-muted-foreground">

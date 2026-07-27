@@ -1,10 +1,10 @@
 import { buildInfo } from "@/generated/build-info"
 
 export const broadcastOSVersion = {
-  code: "2.16",
-  label: "BroadcastOS v2.16",
-  name: "Import knows the rules",
-  date: "15 July 2026",
+  code: "2.17",
+  label: "BroadcastOS v2.17",
+  name: "The monthly arcade",
+  date: "25 July 2026",
   build: buildInfo.shortCommit,
   builtAt: buildInfo.builtAt,
 } as const

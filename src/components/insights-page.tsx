@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { ArcadeMonthlyPanel } from "@/components/arcade-monthly-panel"
 import { PastoralCarePanel } from "@/components/pastoral-care-panel"
 import { studioShows, type StudioShowId } from "@/lib/studio-workspace"
 import type { LinerArchiveItem } from "@/lib/presenter-hub"
@@ -145,6 +146,8 @@ export function InsightsPage() {
       </header>
 
       <PastoralCarePanel />
+
+      <ArcadeMonthlyPanel />
 
       {loading ? (
         <div className="grid min-h-48 place-items-center rounded-[24px] border border-dashed text-sm text-muted-foreground">

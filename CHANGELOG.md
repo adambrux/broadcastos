@@ -2,6 +2,13 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.17 · The monthly arcade · 25 July 2026
+
+- The Arcade goes monthly on Afternoons with Adam: every day's final scoreboard now saves online automatically, and the whole month adds up into a master leaderboard. Glance at the running totals right inside the On Air scoreboard during the game hour, see the full table with a month picker in Insights, and crown the monthly champion from the final count on the last show of the month. Playing every day counts… consistency can beat daily wins.
+- Pastoral care keeps a closer rhythm: anyone waiting on contact prompts you every day on the Today page until it's actioned, and after a check-in they gently return three to four days later instead of a fortnight. Prayer request follow-ups work exactly as before.
+- On Air puts the game first: the scoreboard now opens ready at the top of the side panel, and the listener name log tucks away until you tap it… still there for logging game players and starring keeper messages and prayer requests, without message counting taking centre stage.
+- Saved shows are now a simple picker: choose a show from the dropdown and load it, instead of scrolling past every saved show as a big card.
+
 ## v2.16 · Import knows the rules · 22 July 2026
 
 - The importer caught up with the new show rules: presence-style gate links ("I see you in the chat…") no longer trigger a false warning, and the retired 30-second promo video script is no longer expected… the simple one-statement promo imports clean.

@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  ChevronDown,
   LockKeyhole,
   HandHeart,
   MessageCircle,
@@ -146,6 +147,7 @@ export function UsableOnAir() {
   const [prompter, setPrompter] = useState<PrompterState>("off")
   const [countdown, setCountdown] = useState(5)
   const [listenerName, setListenerName] = useState("")
+  const [namesOpen, setNamesOpen] = useState(false)
   const [source, setSource] = useState<ListenerSource>("whatsapp")
   const [keeperFor, setKeeperFor] = useState("")
   const [keeperTag, setKeeperTag] = useState<string>("keeper")
@@ -656,10 +658,23 @@ export function UsableOnAir() {
             </div>
 
             <div className="rounded-[22px] border border-white/10 bg-white/[0.045] p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">Listeners this show</p>
-                <Badge className="bg-white/10 text-white">{listeners.totalMessages} message{listeners.totalMessages === 1 ? "" : "s"}</Badge>
-              </div>
+              <button
+                type="button"
+                onClick={() => setNamesOpen((value) => !value)}
+                className="flex w-full items-center justify-between gap-3 text-left"
+                aria-expanded={namesOpen}
+              >
+                <span className="flex items-center gap-2">
+                  <Star className="size-4 text-white/40" />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">Name log · players &amp; keepers</span>
+                </span>
+                <span className="flex items-center gap-2">
+                  {listeners.entries.length > 0 && <Badge className="bg-white/10 text-white">{listeners.entries.length} name{listeners.entries.length === 1 ? "" : "s"}</Badge>}
+                  <ChevronDown className={cn("size-4 text-white/40 transition-transform", namesOpen && "rotate-180")} />
+                </span>
+              </button>
+              {namesOpen && (
+                <>
               <div className="mt-4 inline-flex w-full rounded-xl border border-white/10 bg-black/20 p-1" role="group" aria-label="Message source">
                 {listenerSources.map((option) => (
                   <button
@@ -682,7 +697,7 @@ export function UsableOnAir() {
                     value={listenerName}
                     onChange={(event) => setListenerName(event.target.value)}
                     onKeyDown={(event) => { if (event.key === "Enter") addListener() }}
-                    placeholder="Who messaged in?"
+                    placeholder="Add a name…"
                     className="h-11 rounded-xl border-white/10 bg-black/20 text-white placeholder:text-white/25"
                   />
                   <Button className="h-11 rounded-xl bg-white px-3 text-ink hover:bg-white/90" onClick={() => addListener()} aria-label="Log listener message">
@@ -820,10 +835,17 @@ export function UsableOnAir() {
                   )
                 }) : (
                   <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-xs leading-5 text-white/35">
-                    Add a name when someone messages in. Tap their number each time they message again, and star anything worth remembering… birthdays, favourite songs, special messages.
+                    Log the names that matter: game players, and anyone whose message is worth starring… prayer requests, birthdays, favourite songs. No need to count every message.
                   </p>
                 )}
               </div>
+              {listeners.totalMessages > 0 && (
+                <p className="mt-3 text-right text-[10px] font-medium text-white/30">
+                  {listeners.totalMessages} message{listeners.totalMessages === 1 ? "" : "s"} logged this show
+                </p>
+              )}
+                </>
+              )}
             </div>
           </aside>
         </div>
@@ -843,7 +865,7 @@ export function UsableOnAir() {
                 disabled={markingDone || responseGateOpen}
               >
                 {markingDone ? <RotateCcw className="animate-spin" /> : <Check />}
-                {responseGateOpen ? "Choose YES or NO first" : markingDone ? "Done — moving…" : isLastItem ? "Finish show" : "Mark done"}
+                {responseGateOpen ? "Choose YES or NO first" : markingDone ? "Done… moving" : isLastItem ? "Finish show" : "Mark done"}
               </Button>
               <Button variant="outline" className="h-12 rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={!next} onClick={() => moveToItem(activeIndex + 1)}>Next<ArrowRight /></Button>
             </>
