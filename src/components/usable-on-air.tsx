@@ -10,10 +10,12 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  Flag,
   LockKeyhole,
   HandHeart,
   MessageCircle,
   Minus,
+  Pencil,
   Play,
   Plus,
   Radio,
@@ -34,6 +36,7 @@ import { LaunchSequenceBody, LaunchSequenceIndicator } from "@/components/show-l
 import { StudioAmbient } from "@/components/studio-motion"
 import { useLaunchSequence } from "@/lib/launch-sequence"
 import { listenerSources, useListenerLog, type ListenerSource } from "@/lib/listener-log"
+import { reportScriptIssue } from "@/lib/script-issues"
 import {
   saveStudioWorkspace,
   studioShows,
@@ -153,6 +156,12 @@ export function UsableOnAir() {
   const [keeperTag, setKeeperTag] = useState<string>("keeper")
   const [keeperText, setKeeperText] = useState("")
   const [keeperNotice, setKeeperNotice] = useState("")
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<Record<string, string>>({})
+  const [reporting, setReporting] = useState(false)
+  const [issueText, setIssueText] = useState("")
+  const [issueInstead, setIssueInstead] = useState("")
+  const [issueNotice, setIssueNotice] = useState("")
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const prompterControl = useRef<{ raf: number; last: number; speed: number; target: number; pos: number; paused: boolean } | null>(null)
   const countdownTimer = useRef<number | null>(null)
@@ -193,6 +202,8 @@ export function UsableOnAir() {
 
   useEffect(() => {
     stopPrompter()
+    setEditing(false)
+    setReporting(false)
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
     window.scrollTo({ top: 0, behavior: "smooth" })
   }, [activeIndex, stopPrompter])
@@ -319,6 +330,58 @@ export function UsableOnAir() {
     } catch (error) {
       setKeeperNotice(error instanceof Error ? error.message : "Could not save that yet.")
     }
+  }
+
+  function startEditing() {
+    if (!current) return
+    stopPrompter()
+    setReporting(false)
+    setDraft({
+      context: current.context,
+      recap: current.recap,
+      script: current.script,
+      momentNoResponses: current.momentNoResponses,
+      cta: current.cta,
+      tease: current.tease,
+    })
+    setEditing(true)
+  }
+
+  function saveEdits() {
+    if (!current) return
+    saveStudioWorkspace({
+      ...workspace,
+      items: workspace.items.map((item) => item.id === current.id
+        ? {
+          ...item,
+          context: draft.context ?? item.context,
+          recap: draft.recap ?? item.recap,
+          script: draft.script ?? item.script,
+          momentNoResponses: draft.momentNoResponses ?? item.momentNoResponses,
+          cta: draft.cta ?? item.cta,
+          tease: draft.tease ?? item.tease,
+        }
+        : item),
+    })
+    setEditing(false)
+  }
+
+  function submitIssue() {
+    if (!current) return
+    reportScriptIssue({
+      showId: workspace.showId,
+      showDate,
+      linkTitle: current.title,
+      hour: hourLabel,
+      linkPosition: `Link ${hourLinkNumber} of ${hourLinkTotal}`,
+      flaggedText: issueText,
+      saidInstead: issueInstead,
+    })
+    setIssueText("")
+    setIssueInstead("")
+    setReporting(false)
+    setIssueNotice("Flagged… it's waiting for you on the Script issues page.")
+    window.setTimeout(() => setIssueNotice(""), 3500)
   }
 
   if (!current) {
@@ -559,7 +622,26 @@ export function UsableOnAir() {
                       ))}
                     </div>
                   )}
-                  {!responseGateOpen && prompter === "off" && (
+                  {prompter === "off" && !editing && (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="h-10 rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                        aria-pressed={reporting}
+                        onClick={() => setReporting((value) => !value)}
+                      >
+                        <Flag className="size-4" />Flag
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-10 rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                        onClick={startEditing}
+                      >
+                        <Pencil className="size-4" />Edit
+                      </Button>
+                    </>
+                  )}
+                  {!responseGateOpen && prompter === "off" && !editing && (
                     <Button
                       className="h-10 rounded-xl bg-white px-4 text-ink hover:bg-white/90"
                       onClick={startCountdown}
@@ -570,7 +652,79 @@ export function UsableOnAir() {
                 </div>
               </div>
 
-              {responseGateOpen ? (
+              {issueNotice && (
+                <p className="mb-3 rounded-xl bg-emerald-400/15 px-4 py-2.5 text-sm font-semibold text-emerald-200">{issueNotice}</p>
+              )}
+
+              {reporting && !editing && (
+                <div className="mb-3 rounded-[24px] border border-amber-300/30 bg-amber-300/[0.08] p-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">Flag this link · doesn&apos;t sound like me</p>
+                  <p className="mt-2 text-xs leading-5 text-white/50">Both boxes are optional… flag it empty mid-show and fill it in later on the Script issues page.</p>
+                  <textarea
+                    value={issueText}
+                    onChange={(event) => setIssueText(event.target.value)}
+                    placeholder="The words or sentence that felt off…"
+                    rows={2}
+                    className="mt-3 w-full rounded-xl border border-white/15 bg-black/30 p-3 text-base leading-6 text-white outline-none placeholder:text-white/25 focus:border-amber-200"
+                  />
+                  <textarea
+                    value={issueInstead}
+                    onChange={(event) => setIssueInstead(event.target.value)}
+                    placeholder="What you said instead (optional)…"
+                    rows={2}
+                    className="mt-2 w-full rounded-xl border border-white/15 bg-black/30 p-3 text-base leading-6 text-white outline-none placeholder:text-white/25 focus:border-amber-200"
+                  />
+                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-10 rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                      onClick={() => setReporting(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button className="h-10 rounded-xl bg-amber-300 px-5 font-semibold text-ink hover:bg-amber-200" onClick={submitIssue}>
+                      <Flag className="size-4" />Flag it
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {editing ? (
+                <div className="space-y-3">
+                  {[
+                    { key: "context", label: "Context", rows: 3 },
+                    { key: "recap", label: "Recap", rows: 3 },
+                    { key: "script", label: current.responseGate ? "The Moment · If responses" : "The Moment", rows: 8 },
+                    ...(current.responseGate || (draft.momentNoResponses ?? "").trim()
+                      ? [{ key: "momentNoResponses", label: "The Moment · If no responses", rows: 6 }]
+                      : []),
+                    { key: "cta", label: "Call To Action", rows: 3 },
+                    { key: "tease", label: "Tease ahead", rows: 2 },
+                  ].map((field) => (
+                    <label key={field.key} className="block rounded-[24px] border border-violet-300/25 bg-violet-400/[0.06] p-4">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-200">{field.label}</span>
+                      <textarea
+                        value={draft[field.key] ?? ""}
+                        onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, [field.key]: event.target.value }))}
+                        rows={field.rows}
+                        className="mt-2 w-full rounded-xl border border-white/15 bg-black/30 p-3 text-lg leading-7 text-white outline-none focus:border-violet-300"
+                      />
+                    </label>
+                  ))}
+                  <div className="flex flex-wrap justify-end gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      className="h-11 rounded-xl border-white/15 bg-white/5 px-5 text-white hover:bg-white/10 hover:text-white"
+                      onClick={() => setEditing(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button className="h-11 rounded-xl bg-white px-6 font-semibold text-ink hover:bg-white/90" onClick={saveEdits}>
+                      <Check className="size-4" />Save changes
+                    </Button>
+                  </div>
+                </div>
+              ) : responseGateOpen ? (
                 <div className="rounded-[28px] border border-violet-300/35 bg-violet-400/[0.13] p-6 text-center sm:p-8">
                   <Badge className="bg-violet-200 text-violet-950">Response Gate</Badge>
                   <h3 className="mx-auto mt-5 max-w-3xl text-4xl font-semibold tracking-[-0.055em] sm:text-6xl">

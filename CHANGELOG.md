@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.18 · Your words, your call · 25 July 2026
+
+- Edit any link without leaving On Air: tap Edit on the current link, change any part of the script right there, and the reading view updates instantly… the edited version is what the show keeps.
+- Flag anything that doesn't sound like you: every link now has a Flag button. Tap it mid-show (empty is fine), optionally capture the words that felt off and what you said instead, and it lands on the new Script issues page.
+- New Script issues page in the menu: every flag listed with its show, date and link, editable after the show, with a one-tap Copy report that produces a paste-ready summary for the producer debrief… so anything that didn't sound like you gets fixed for good.
+
 ## v2.17 · The monthly arcade · 25 July 2026
 
 - The Arcade goes monthly on Afternoons with Adam: every day's final scoreboard now saves online automatically, and the whole month adds up into a master leaderboard. Glance at the running totals right inside the On Air scoreboard during the game hour, see the full table with a month picker in Insights, and crown the monthly champion from the final count on the last show of the month. Playing every day counts… consistency can beat daily wins.

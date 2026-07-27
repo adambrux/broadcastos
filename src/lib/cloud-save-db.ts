@@ -84,6 +84,20 @@ export type GameScoreRow = {
   updated_at: string
 }
 
+export type ScriptIssueRow = {
+  id: string
+  show_id: string
+  show_date: string
+  link_title: string
+  hour: string
+  link_position: string
+  flagged_text: string
+  said_instead: string
+  resolved_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type PresenterHubLinerRow = {
   id: string
   title: string
@@ -214,6 +228,29 @@ export async function ensureGameScoreSchema(sql: BroadcastSql) {
   await sql`
     CREATE INDEX IF NOT EXISTS broadcastos_game_scores_month_idx
     ON broadcastos_game_scores (show_id, show_date DESC)
+  `
+}
+
+export async function ensureScriptIssuesSchema(sql: BroadcastSql) {
+  await sql`
+    CREATE TABLE IF NOT EXISTS broadcastos_script_issues (
+      id TEXT PRIMARY KEY,
+      show_id TEXT NOT NULL,
+      show_date TEXT NOT NULL,
+      link_title TEXT NOT NULL,
+      hour TEXT NOT NULL DEFAULT '',
+      link_position TEXT NOT NULL DEFAULT '',
+      flagged_text TEXT NOT NULL DEFAULT '',
+      said_instead TEXT NOT NULL DEFAULT '',
+      resolved_at TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS broadcastos_script_issues_created_at_idx
+    ON broadcastos_script_issues (created_at DESC)
   `
 }
 

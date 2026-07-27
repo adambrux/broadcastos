@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   ChevronDown,
+  Flag,
   Gauge,
   Menu,
   Newspaper,
@@ -42,6 +43,7 @@ const navigation = [
   { label: "Produce", href: "/producer", icon: SlidersHorizontal },
   { label: "Presenter Hub", href: "/newsroom", icon: Newspaper },
   { label: "Insights", href: "/insights", icon: BarChart3 },
+  { label: "Script issues", href: "/issues", icon: Flag },
   { label: "On Air", href: "/broadcast", icon: Radio },
 ] as const
 
