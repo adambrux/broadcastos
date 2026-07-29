@@ -2,6 +2,10 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.20 · Every word arrives · 29 July 2026
+
+- Fixed imported scripts losing chunks of a link: a sentence opening with a colon ("Finish the verse: …") was being read as a new field heading, and everything after it in that box silently vanished. The importer now only recognises real field names… script sentences stay exactly where they belong. Re-import any show that lost words and the full script comes through.
+
 ## v2.19 · Nobody gets lost · 29 July 2026
 
 - Fixed names not appearing in the On Air suggestions: the pool was capped at the top 60 all-time messagers, so anyone outside it never came up. It now covers everyone heard from recently, most recent first.

@@ -77,6 +77,38 @@ const fieldAliases: Record<string, string> = {
 
 const fieldPattern = /^\s*([A-Za-z0-9][A-Za-z0-9 /’'·–—-]+):\s*(.*)$/
 
+/**
+ * Every field key the importer or desk actually reads. A line is only treated
+ * as a field label when it canonicalises to one of these… otherwise it's a
+ * script sentence that happens to open with a colon ("Finish the verse: …")
+ * and belongs to the current field's content. Sentence-per-line formatting
+ * made phantom labels swallow whole moments (Q5 vanished on air, 29 July 2026).
+ * Add new keys here when a new field name is introduced.
+ */
+const recognizedFieldKeys = new Set<string>([
+  ...Object.values(fieldAliases),
+  "context",
+  "time",
+  "duration",
+  "hour",
+  "date",
+  "show",
+  "station",
+  "presenter",
+  "producer",
+  "themeBigIdea",
+  "mainListenerQuestion",
+  "stationLinersToInclude",
+  "prayerPoints",
+  "guestInterviewItems",
+  "trackOfTheWeek",
+  "hourName",
+  "purposeOfThisHour",
+  "interactionGoal",
+  "requiredAssets",
+  "fallbackThemeIfContentIsLight",
+])
+
 const numberWords: Record<string, string> = {
   one: "1",
   two: "2",
@@ -113,9 +145,14 @@ function parseFields(block: string): ParsedFields {
       .trimEnd()
     const match = fieldLine.match(fieldPattern)
     if (match) {
-      currentKey = canonicalField(match[1])
-      fields[currentKey] = clean(match[2])
-      return
+      const key = canonicalField(match[1])
+      if (recognizedFieldKeys.has(key)) {
+        currentKey = key
+        fields[currentKey] = clean(match[2])
+        return
+      }
+      // Not a real label: a sentence like "Finish the verse: …" stays in the
+      // current field instead of becoming a phantom field that swallows content.
     }
 
     if (currentKey) {
