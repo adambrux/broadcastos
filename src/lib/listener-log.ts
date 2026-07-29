@@ -182,6 +182,52 @@ function bumpSource(counts: Record<string, number> | undefined, source: Listener
   return { ...(counts ?? {}), [source]: Math.max(0, ((counts ?? {})[source] ?? 0) + delta) }
 }
 
+type PendingLog = { name: string; showId: string; showDate: string; source: ListenerSource; delta: 1 | -1 }
+
+const queueKey = "broadcastos-listener-sync-queue"
+
+function readQueue(): PendingLog[] {
+  try {
+    const raw = window.localStorage.getItem(queueKey)
+    return raw ? (JSON.parse(raw) as PendingLog[]) : []
+  } catch {
+    return []
+  }
+}
+
+function writeQueue(queue: PendingLog[]) {
+  window.localStorage.setItem(queueKey, JSON.stringify(queue.slice(-200)))
+}
+
+async function sendLog(pending: PendingLog) {
+  const response = await fetch("/api/listeners", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(pending),
+  })
+  if (!response.ok) throw new Error("Listener log sync failed")
+}
+
+/** Push a log to the cloud; a patchy studio connection queues it for retry instead of losing it. */
+function syncLog(pending: PendingLog) {
+  void sendLog(pending).catch(() => writeQueue([...readQueue(), pending]))
+}
+
+/** Retry anything that failed to reach the cloud earlier. Stops at the first failure and keeps the rest queued. */
+async function flushQueue() {
+  const queue = readQueue()
+  if (!queue.length) return
+  writeQueue([])
+  for (let index = 0; index < queue.length; index += 1) {
+    try {
+      await sendLog(queue[index])
+    } catch {
+      writeQueue([...queue.slice(index), ...readQueue()])
+      return
+    }
+  }
+}
+
 /**
  * Today's listener roll for one show. Names live on this device instantly and
  * sync to the cloud in the background, so the roll survives a patchy studio
@@ -194,6 +240,7 @@ export function useListenerLog(showId: string, showDate: string) {
 
   useEffect(() => {
     setEntries(readLocal(showId, showDate))
+    void flushQueue()
 
     let cancelled = false
     async function pull() {
@@ -228,7 +275,12 @@ export function useListenerLog(showId: string, showDate: string) {
       }
     }
     void pull()
-    return () => { cancelled = true }
+    // One delayed re-pull heals the session when the first fetch hit a patchy moment.
+    const retry = window.setTimeout(() => { void pull() }, 8000)
+    return () => {
+      cancelled = true
+      window.clearTimeout(retry)
+    }
   }, [showDate, showId])
 
   const logMessage = useCallback((rawName: string, source: ListenerSource = "whatsapp", delta: 1 | -1 = 1) => {
@@ -269,11 +321,7 @@ export function useListenerLog(showId: string, showDate: string) {
         : total)
     })
 
-    void fetch("/api/listeners", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, showId, showDate, source, delta }),
-    }).catch(() => {})
+    syncLog({ name, showId, showDate, source, delta })
   }, [showDate, showId])
 
   /** The most recent starred note for a listener… prayer requests first, so they can be referred to on air. */
@@ -320,7 +368,8 @@ export function useListenerLog(showId: string, showDate: string) {
     const names: string[] = []
     for (const candidate of [...entries.map((entry) => entry.name), ...totals.map((total) => total.name)]) {
       const key = listenerNameKey(candidate)
-      if (seen.has(key) || key === needle || !key.includes(needle)) continue
+      // Exact matches stay in the list: seeing the name confirms the person is saved.
+      if (seen.has(key) || !key.includes(needle)) continue
       seen.add(key)
       names.push(candidate)
       if (names.length >= 4) break

@@ -74,8 +74,8 @@ export async function GET(request: Request) {
       MAX(show_date) AS last_heard
     FROM broadcastos_listener_log
     GROUP BY name_key
-    ORDER BY total_messages DESC, last_heard DESC
-    LIMIT 60
+    ORDER BY last_heard DESC, total_messages DESC
+    LIMIT 500
   ` as TotalsRow[]
 
   const shows = await sql`

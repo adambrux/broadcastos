@@ -2,6 +2,13 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.19 · Nobody gets lost · 29 July 2026
+
+- Fixed names not appearing in the On Air suggestions: the pool was capped at the top 60 all-time messagers, so anyone outside it never came up. It now covers everyone heard from recently, most recent first.
+- Typing a name in full now shows it in the suggestions instead of hiding it… seeing the name confirms the person is saved, and tapping it logs them as before.
+- Interactions no longer vanish on a patchy studio connection: any save that fails to reach the cloud is queued on the device and retried automatically next time the page loads or a new name is logged.
+- The listener roll also quietly re-fetches once after loading, so a bad first connection no longer leaves a session with an empty history.
+
 ## v2.18 · Your words, your call · 25 July 2026
 
 - Edit any link without leaving On Air: tap Edit on the current link, change any part of the script right there, and the reading view updates instantly… the edited version is what the show keeps.
