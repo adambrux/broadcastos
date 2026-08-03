@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   await ensureAuthSchema(sql)
 
   const rows = await sql`
-    SELECT id, email, display_name, role, disabled, created_at
+    SELECT id, email, display_name, role, disabled, created_at, show_name, arcade_enabled
     FROM broadcastos_users
     ORDER BY created_at ASC
   ` as ManagedUserRow[]
@@ -41,6 +41,8 @@ export async function GET(request: Request) {
       role: row.role,
       disabled: Boolean(row.disabled),
       createdAt: toIso(row.created_at),
+      showName: (row as { show_name?: string | null }).show_name ?? null,
+      arcadeEnabled: (row as { arcade_enabled?: boolean | null }).arcade_enabled ?? row.role === "owner",
     })),
   })
 }
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
   const sql = getCloudSaveSql()
   if (!sql) return Response.json({ error: "Online storage is not available yet." }, { status: 503 })
 
-  const body = await request.json().catch(() => null) as { displayName?: string; email?: string; password?: string } | null
+  const body = await request.json().catch(() => null) as { displayName?: string; email?: string; password?: string; showName?: string } | null
   const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : ""
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
   const password = typeof body?.password === "string" ? body.password : ""
@@ -63,8 +65,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const id = await createUser(sql, { displayName, email, password, role: "presenter" })
-    return Response.json({ user: { id, email, displayName, role: "presenter", disabled: false } })
+    const showName = typeof body?.showName === "string" ? body.showName.trim() : ""
+    const id = await createUser(sql, { displayName, email, password, role: "presenter", showName, arcadeEnabled: false })
+    return Response.json({ user: { id, email, displayName, role: "presenter", disabled: false, showName: showName || null, arcadeEnabled: false } })
   } catch {
     return Response.json({ error: "That email already has an account." }, { status: 409 })
   }
@@ -82,6 +85,8 @@ export async function PATCH(request: Request) {
     userId?: string
     disabled?: boolean
     newPassword?: string
+    showName?: string
+    arcadeEnabled?: boolean
   } | null
   const userId = typeof body?.userId === "string" ? body.userId : ""
   if (!userId) return Response.json({ error: "userId is needed." }, { status: 400 })
@@ -97,6 +102,15 @@ export async function PATCH(request: Request) {
     if (body.disabled) {
       await sql`DELETE FROM broadcastos_auth_sessions WHERE user_id = ${userId}`
     }
+  }
+
+  if (typeof body?.showName === "string" && auth.user.role === "owner") {
+    await sql`UPDATE broadcastos_users SET show_name = ${body.showName.trim() || null} WHERE id = ${userId}`
+  }
+
+  // Any presenter can switch their own leaderboard on or off; the owner can too.
+  if (typeof body?.arcadeEnabled === "boolean") {
+    await sql`UPDATE broadcastos_users SET arcade_enabled = ${body.arcadeEnabled} WHERE id = ${userId}`
   }
 
   if (typeof body?.newPassword === "string" && body.newPassword) {

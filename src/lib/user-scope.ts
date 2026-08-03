@@ -6,6 +6,22 @@ export type ActiveUser = {
   id: string
   name: string
   role: "owner" | "presenter"
+  showName?: string | null
+  arcadeEnabled?: boolean
+}
+
+/** The presenter's own show name, when they have one. The owner keeps the built-in shows. */
+export function presenterShowName(): string | null {
+  const user = getActiveUser()
+  if (!user || user.role === "owner") return null
+  return user.showName || null
+}
+
+/** Whether the Arcade and monthly leaderboard show for this account. */
+export function arcadeAllowed(): boolean {
+  const user = getActiveUser()
+  if (!user || user.role === "owner") return true
+  return Boolean(user.arcadeEnabled)
 }
 
 const ACTIVE_USER_KEY = "broadcastos-active-user"

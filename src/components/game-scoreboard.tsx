@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { arcadeMonthLabel, arcadeShowId, syncArcadeScores, useArcadeMonth } from "@/lib/arcade-leaderboard"
 import { cn } from "@/lib/utils"
+import { arcadeAllowed } from "@/lib/user-scope"
 import { scopedKey } from "@/lib/user-scope"
 
 type Mark = "" | "y" | "n"
@@ -44,6 +45,9 @@ function score(player: Player) {
  * through the WhatsApp scroll at the end of the hour.
  */
 export function GameScoreboard({
+  // Presenters without the Arcade never see the scoreboard.
+  if (!arcadeAllowed()) return null
+
   showId,
   showDate,
   suggest,

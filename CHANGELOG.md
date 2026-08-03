@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.22 · Your show, your rules · 3 August 2026
+
+- Every presenter account now carries its own show name… set it when the owner creates the account, and it appears everywhere the app names a show, instead of the built-in shows.
+- The Arcade and monthly leaderboard are now optional: off by default for new presenters, and switchable any time from the new My account page (profile menu). Switch it on and the scoreboard appears in On Air with the monthly table in Insights… switch it off and they disappear, no data lost.
+- Presenters can change their own password from My account.
+
 ## v2.21 · Your own keys · 3 August 2026
 
 - BroadcastOS now has accounts: every presenter signs in as themselves, and everything in the app… saved shows, the listener family, prayer requests, scoreboards, liners and flagged scripts… belongs to the person who made it. Nobody ever sees anyone else's world.

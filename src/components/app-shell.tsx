@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .then((response) => response.json())
       .then((data) => {
         if (data?.user) {
-          const fresh: ActiveUser = { id: data.user.id, name: data.user.displayName, role: data.user.role }
+          const fresh: ActiveUser = { id: data.user.id, name: data.user.displayName, role: data.user.role, showName: data.user.showName ?? null, arcadeEnabled: Boolean(data.user.arcadeEnabled) }
           setActiveUser(fresh)
           setUser(fresh)
         } else {
@@ -184,11 +184,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <DropdownMenuContent align="end" side="right" className="w-52">
             <DropdownMenuLabel>{user?.name ?? "BroadcastOS"}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {user?.role === "owner" && (
-              <DropdownMenuItem asChild>
-                <Link href="/accounts">Accounts</Link>
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem asChild>
+              <Link href="/accounts">{user?.role === "owner" ? "Accounts" : "My account"}</Link>
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => signOut()}>Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

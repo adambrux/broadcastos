@@ -20,6 +20,7 @@ export default function AccountsPage() {
   const [displayName, setDisplayName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showName, setShowName] = useState("")
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
   const me = getActiveUser()
@@ -47,7 +48,7 @@ export default function AccountsPage() {
     const response = await fetch("/api/auth/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName, email, password }),
+      body: JSON.stringify({ displayName, email, password, showName }),
     })
     const data = await response.json().catch(() => null)
     if (!response.ok) {
@@ -57,6 +58,7 @@ export default function AccountsPage() {
       setDisplayName("")
       setEmail("")
       setPassword("")
+      setShowName("")
       await refresh()
     }
     setBusy(false)
@@ -84,10 +86,36 @@ export default function AccountsPage() {
   }
 
   if (loaded && forbidden) {
+    // Presenters manage their own account here: leaderboard on or off, and password.
     return (
-      <div className="max-w-xl">
-        <h1 className="text-xl font-semibold tracking-tight">Accounts</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Only the owner can manage accounts.</p>
+      <div className="max-w-xl space-y-6">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">My account</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Signed in as {me?.name}.</p>
+        </div>
+        <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[14px] font-medium">Game leaderboard</p>
+              <p className="text-[12px] text-muted-foreground">Adds the Arcade scoreboard to On Air and the monthly table to Insights.</p>
+            </div>
+            <Button variant="outline" className="rounded-lg" onClick={async () => {
+              const next = !(me?.arcadeEnabled)
+              await fetch("/api/auth/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: me?.id, arcadeEnabled: next }) })
+              const raw = window.localStorage.getItem("broadcastos-active-user")
+              if (raw) window.localStorage.setItem("broadcastos-active-user", JSON.stringify({ ...JSON.parse(raw), arcadeEnabled: next }))
+              window.location.reload()
+            }}>{me?.arcadeEnabled ? "Switch off" : "Switch on"}</Button>
+          </div>
+          <div className="border-t border-border/60 pt-4">
+            <Button variant="outline" className="rounded-lg" onClick={async () => {
+              const newPassword = window.prompt("New password (8 characters or more):")
+              if (!newPassword) return
+              const response = await fetch("/api/auth/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: me?.id, newPassword }) })
+              window.alert(response.ok ? "Password updated… sign in again with it." : "That didn't save.")
+            }}>Change my password</Button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -115,6 +143,10 @@ export default function AccountsPage() {
           <label className="block">
             <span className="mb-1 block text-[13px] font-medium">First password</span>
             <input className="h-11 w-full rounded-xl border border-border bg-background px-3 text-[14px]" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required />
+          </label>
+          <label className="block sm:col-span-3">
+            <span className="mb-1 block text-[13px] font-medium">Their show name (shows everywhere instead of the built-in shows)</span>
+            <input className="h-11 w-full rounded-xl border border-border bg-background px-3 text-[14px]" value={showName} onChange={(event) => setShowName(event.target.value)} placeholder="e.g. Daytimes with Ibe" />
           </label>
         </div>
         {message && <p className="text-[13px] font-medium text-brand-indigo">{message}</p>}

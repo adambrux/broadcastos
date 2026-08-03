@@ -14,6 +14,10 @@ export type AppUser = {
   displayName: string
   role: "owner" | "presenter"
   disabled: boolean
+  /** Presenter's own show name; the owner uses the built-in shows. */
+  showName: string | null
+  /** The Arcade and monthly leaderboard: on for the owner, off by default for presenters. */
+  arcadeEnabled: boolean
 }
 
 type UserRow = {
@@ -23,6 +27,8 @@ type UserRow = {
   role: string
   disabled: boolean
   password_hash: string
+  show_name: string | null
+  arcade_enabled: boolean | null
 }
 
 function scrypt(password: string, salt: Buffer): Promise<Buffer> {
@@ -84,6 +90,9 @@ export async function ensureAuthSchema(sql: BroadcastSql) {
     )
   `
 
+  await sql`ALTER TABLE broadcastos_users ADD COLUMN IF NOT EXISTS show_name TEXT`
+  await sql`ALTER TABLE broadcastos_users ADD COLUMN IF NOT EXISTS arcade_enabled BOOLEAN`
+
   await sql`
     CREATE TABLE IF NOT EXISTS broadcastos_auth_sessions (
       token_hash TEXT PRIMARY KEY,
@@ -142,19 +151,22 @@ export async function countUsers(sql: BroadcastSql) {
 }
 
 function userFromRow(row: UserRow): AppUser {
+  const role = row.role === "owner" ? "owner" : "presenter"
   return {
     id: row.id,
     email: row.email,
     displayName: row.display_name,
-    role: row.role === "owner" ? "owner" : "presenter",
+    role,
     disabled: Boolean(row.disabled),
+    showName: row.show_name ?? null,
+    arcadeEnabled: row.arcade_enabled ?? role === "owner",
   }
 }
 
 export async function findUserByEmail(sql: BroadcastSql, email: string) {
   await ensureAuthSchema(sql)
   const rows = await sql`
-    SELECT id, email, display_name, role, disabled, password_hash
+    SELECT id, email, display_name, role, disabled, password_hash, show_name, arcade_enabled
     FROM broadcastos_users
     WHERE email = ${email.toLowerCase().trim()}
     LIMIT 1
@@ -165,14 +177,15 @@ export async function findUserByEmail(sql: BroadcastSql, email: string) {
 
 export async function createUser(
   sql: BroadcastSql,
-  input: { email: string; displayName: string; password: string; role: "owner" | "presenter" }
+  input: { email: string; displayName: string; password: string; role: "owner" | "presenter"; showName?: string; arcadeEnabled?: boolean }
 ) {
   await ensureAuthSchema(sql)
   const id = crypto.randomUUID()
   const passwordHash = await hashPassword(input.password)
+  const arcade = input.arcadeEnabled ?? (input.role === "owner")
   await sql`
-    INSERT INTO broadcastos_users (id, email, display_name, role, password_hash)
-    VALUES (${id}, ${input.email.toLowerCase().trim()}, ${input.displayName.trim()}, ${input.role}, ${passwordHash})
+    INSERT INTO broadcastos_users (id, email, display_name, role, password_hash, show_name, arcade_enabled)
+    VALUES (${id}, ${input.email.toLowerCase().trim()}, ${input.displayName.trim()}, ${input.role}, ${passwordHash}, ${input.showName?.trim() || null}, ${arcade})
   `
   return id
 }
@@ -220,7 +233,7 @@ export async function getSessionUser(request: Request): Promise<AppUser | null> 
 
   await ensureAuthSchema(sql)
   const rows = await sql`
-    SELECT u.id, u.email, u.display_name, u.role, u.disabled, u.password_hash
+    SELECT u.id, u.email, u.display_name, u.role, u.disabled, u.password_hash, u.show_name, u.arcade_enabled
     FROM broadcastos_auth_sessions s
     JOIN broadcastos_users u ON u.id = s.user_id
     WHERE s.token_hash = ${hashToken(token)} AND s.expires_at > NOW()

@@ -134,7 +134,7 @@ export async function POST(request: Request) {
 
   const [session] = rows
 
-  const showDisplayName = showName(showId)
+  const showDisplayName = auth.user.role !== "owner" && auth.user.showName ? auth.user.showName : showName(showId)
   const weekStart = weekStartFromDate(showDate)
   const showScriptContent = serialiseShowPlanForPresenterHub(workspace)
   const presenterImportId = `show-session-${id}`

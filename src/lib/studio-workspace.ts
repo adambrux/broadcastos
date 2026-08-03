@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react"
 
 import { validateLinkFramework, type LinkFrameworkValues } from "@/lib/link-framework"
-import { scopedKey } from "@/lib/user-scope"
+import { presenterShowName, scopedKey } from "@/lib/user-scope"
 
 export type StudioShowId = "sundays" | "afternoons" | "saturday"
 export type StudioMode = "in-studio" | "remote"
@@ -61,11 +61,26 @@ export type StudioWorkspace = {
   updatedAt: string
 }
 
-export const studioShows = {
+const baseStudioShows = {
   sundays: { name: "Sundays with Adam", schedule: "Sunday · 09:00–12:00" },
   afternoons: { name: "Afternoons with Adam", schedule: "Weekdays · 13:00–16:00" },
   saturday: { name: "Saturday Breakfast", schedule: "Saturday · 07:00–10:00" },
 } as const
+
+type StudioShowInfo = { name: string; schedule: string }
+
+function showFor(id: StudioShowId): StudioShowInfo {
+  const own = presenterShowName()
+  return own ? { name: own, schedule: baseStudioShows[id].schedule } : baseStudioShows[id]
+}
+
+// Presenters see their own show name everywhere a show is named; the owner
+// keeps the three built-in shows exactly as before.
+export const studioShows: Record<StudioShowId, StudioShowInfo> = {
+  get sundays() { return showFor("sundays") },
+  get afternoons() { return showFor("afternoons") },
+  get saturday() { return showFor("saturday") },
+}
 
 const makeItem = (
   id: string,

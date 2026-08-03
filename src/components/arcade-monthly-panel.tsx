@@ -1,5 +1,6 @@
 "use client"
 
+import { arcadeAllowed } from "@/lib/user-scope"
 import { useState } from "react"
 import { Crown, Gamepad2, Loader2, Trophy } from "lucide-react"
 
@@ -15,6 +16,8 @@ import { cn } from "@/lib/utils"
  * crowns the monthly champion on air on the last show of the month.
  */
 export function ArcadeMonthlyPanel() {
+  if (!arcadeAllowed()) return null
+
   const [month, setMonth] = useState(ukMonth())
   const { data, loading } = useArcadeMonth(month)
 
