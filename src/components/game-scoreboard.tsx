@@ -44,10 +44,7 @@ function score(player: Player) {
  * question as answers arrive, and the ranking sorts itself… no counting
  * through the WhatsApp scroll at the end of the hour.
  */
-export function GameScoreboard({
-  // Presenters without the Arcade never see the scoreboard.
-  if (!arcadeAllowed()) return null
-
+function GameScoreboardInner({
   showId,
   showDate,
   suggest,
@@ -289,4 +286,14 @@ export function GameScoreboard({
       )}
     </div>
   )
+}
+
+
+// Presenters without the Arcade never see the scoreboard. Mount-gated so the
+// server render stays stable.
+export function GameScoreboard(props: Parameters<typeof GameScoreboardInner>[0]) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => setReady(true), [])
+  if (!ready || !arcadeAllowed()) return null
+  return <GameScoreboardInner {...props} />
 }

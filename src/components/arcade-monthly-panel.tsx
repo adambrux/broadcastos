@@ -1,7 +1,7 @@
 "use client"
 
 import { arcadeAllowed } from "@/lib/user-scope"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Crown, Gamepad2, Loader2, Trophy } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -15,9 +15,7 @@ import { cn } from "@/lib/utils"
  * every day can beat a couple of big wins. The ranked final count is what
  * crowns the monthly champion on air on the last show of the month.
  */
-export function ArcadeMonthlyPanel() {
-  if (!arcadeAllowed()) return null
-
+function ArcadeMonthlyPanelInner() {
   const [month, setMonth] = useState(ukMonth())
   const { data, loading } = useArcadeMonth(month)
 
@@ -102,4 +100,12 @@ export function ArcadeMonthlyPanel() {
       </CardContent>
     </Card>
   )
+}
+
+
+export function ArcadeMonthlyPanel() {
+  const [ready, setReady] = useState(false)
+  useEffect(() => setReady(true), [])
+  if (!ready || !arcadeAllowed()) return null
+  return <ArcadeMonthlyPanelInner />
 }
