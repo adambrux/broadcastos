@@ -5,6 +5,7 @@ import {
   type ListenerNoteRow,
   type ListenerProfileRow,
 } from "@/lib/cloud-save-db"
+import { requireUser } from "@/lib/auth-db"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -45,11 +46,15 @@ function noteFromRow(row: ListenerNoteRow) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const sql = getCloudSaveSql()
   if (!sql) {
     return Response.json({ profiles: [], notes: [], status: cloudSaveStatus() })
   }
+
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
 
   try {
     await ensureListenerLogSchema(sql)
@@ -57,6 +62,7 @@ export async function GET() {
     const profileRows = await sql`
       SELECT name_key, display_name, birthday, favourite_song, last_checkin_at, created_at, updated_at
       FROM broadcastos_listener_profiles
+      WHERE user_id = ${userId}
       ORDER BY updated_at DESC
       LIMIT 200
     ` as ListenerProfileRow[]
@@ -64,6 +70,7 @@ export async function GET() {
     const noteRows = await sql`
       SELECT id, name_key, tag, content, show_date, followed_up_at, created_at
       FROM broadcastos_listener_notes
+      WHERE user_id = ${userId}
       ORDER BY created_at DESC
       LIMIT 400
     ` as ListenerNoteRow[]
@@ -93,6 +100,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "Online storage is not available yet.", status: cloudSaveStatus() }, { status: 503 })
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   try {
     await ensureListenerLogSchema(sql)
 
@@ -113,9 +124,9 @@ export async function POST(request: Request) {
       : noteContent && noteTag === "favourite-song" ? noteContent : undefined
 
     const profileRows = await sql`
-      INSERT INTO broadcastos_listener_profiles (name_key, display_name, birthday, favourite_song)
-      VALUES (${key}, ${name}, ${birthday ?? null}, ${favouriteSong ?? null})
-      ON CONFLICT (name_key)
+      INSERT INTO broadcastos_listener_profiles (name_key, user_id, display_name, birthday, favourite_song)
+      VALUES (${key}, ${userId}, ${name}, ${birthday ?? null}, ${favouriteSong ?? null})
+      ON CONFLICT (user_id, name_key)
       DO UPDATE SET
         display_name = ${name},
         birthday = COALESCE(${birthday ?? null}, broadcastos_listener_profiles.birthday),
@@ -127,8 +138,8 @@ export async function POST(request: Request) {
     let note = null
     if (noteContent) {
       const noteRows = await sql`
-        INSERT INTO broadcastos_listener_notes (id, name_key, tag, content, show_date)
-        VALUES (${crypto.randomUUID()}, ${key}, ${noteTag}, ${noteContent}, ${body?.note?.showDate ?? null})
+        INSERT INTO broadcastos_listener_notes (id, user_id, name_key, tag, content, show_date)
+        VALUES (${crypto.randomUUID()}, ${userId}, ${key}, ${noteTag}, ${noteContent}, ${body?.note?.showDate ?? null})
         RETURNING id, name_key, tag, content, show_date, followed_up_at, created_at
       ` as ListenerNoteRow[]
       note = noteRows.at(0) ? noteFromRow(noteRows[0]) : null
@@ -154,19 +165,23 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Online storage is not available yet.", status: cloudSaveStatus() }, { status: 503 })
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   try {
     await ensureListenerLogSchema(sql)
 
     const body = await request.json().catch(() => null) as PatchPayload | null
     const now = new Date().toISOString()
 
-    // Mark a pastoral check-in: Adam has personally contacted this listener.
+    // Mark a pastoral check-in: the presenter has personally contacted this listener.
     if (body?.checkin && typeof body.name === "string" && body.name.trim()) {
       const name = body.name.replace(/\s+/g, " ").trim()
       const rows = await sql`
-        INSERT INTO broadcastos_listener_profiles (name_key, display_name, last_checkin_at)
-        VALUES (${nameKey(name)}, ${name}, ${now})
-        ON CONFLICT (name_key)
+        INSERT INTO broadcastos_listener_profiles (name_key, user_id, display_name, last_checkin_at)
+        VALUES (${nameKey(name)}, ${userId}, ${name}, ${now})
+        ON CONFLICT (user_id, name_key)
         DO UPDATE SET last_checkin_at = ${now}, updated_at = NOW()
         RETURNING name_key, display_name, birthday, favourite_song, last_checkin_at, created_at, updated_at
       ` as ListenerProfileRow[]
@@ -179,7 +194,7 @@ export async function PATCH(request: Request) {
       const rows = await sql`
         UPDATE broadcastos_listener_notes
         SET followed_up_at = ${now}
-        WHERE id = ${body.noteId}
+        WHERE id = ${body.noteId} AND user_id = ${userId}
         RETURNING id, name_key, tag, content, show_date, followed_up_at, created_at
       ` as ListenerNoteRow[]
       const saved = rows.at(0)
@@ -198,6 +213,10 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "Online storage is not available yet.", status: cloudSaveStatus() }, { status: 503 })
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   try {
     await ensureListenerLogSchema(sql)
 
@@ -207,7 +226,7 @@ export async function DELETE(request: Request) {
       return Response.json({ error: "noteId is needed." }, { status: 400 })
     }
 
-    await sql`DELETE FROM broadcastos_listener_notes WHERE id = ${noteId}`
+    await sql`DELETE FROM broadcastos_listener_notes WHERE id = ${noteId} AND user_id = ${userId}`
     return Response.json({ ok: true, status: cloudSaveStatus() })
   } catch (error) {
     return Response.json({ error: errorMessage(error), status: cloudSaveStatus() }, { status: 500 })

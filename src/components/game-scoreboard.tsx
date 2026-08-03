@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { arcadeMonthLabel, arcadeShowId, syncArcadeScores, useArcadeMonth } from "@/lib/arcade-leaderboard"
 import { cn } from "@/lib/utils"
+import { scopedKey } from "@/lib/user-scope"
 
 type Mark = "" | "y" | "n"
 
@@ -22,7 +23,7 @@ type ScoreboardState = {
 }
 
 function storageKey(showId: string, showDate: string) {
-  return `broadcastos-scoreboard:${showId}:${showDate || "undated"}`
+  return scopedKey(`broadcastos-scoreboard:${showId}:${showDate || "undated"}`)
 }
 
 function readState(showId: string, showDate: string): ScoreboardState {

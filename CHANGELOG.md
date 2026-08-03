@@ -2,6 +2,14 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.21 · Your own keys · 3 August 2026
+
+- BroadcastOS now has accounts: every presenter signs in as themselves, and everything in the app… saved shows, the listener family, prayer requests, scoreboards, liners and flagged scripts… belongs to the person who made it. Nobody ever sees anyone else's world.
+- First visit after this update asks the owner to create their account… everything already saved automatically becomes theirs.
+- The owner gets a new Accounts page (in the profile menu): create a presenter's account, reset a password, or switch an account off in one tap.
+- Sign out lives in the profile menu… worth a tap whenever you leave a shared studio machine.
+- On-device copies are separated per person too, so two presenters using the same studio computer never see each other's names or notes, even offline.
+
 ## v2.20 · Every word arrives · 29 July 2026
 
 - Fixed imported scripts losing chunks of a link: a sentence opening with a colon ("Finish the verse: …") was being read as a new field heading, and everything after it in that box silently vanished. The importer now only recognises real field names… script sentences stay exactly where they belong. Re-import any show that lost words and the full script comes through.

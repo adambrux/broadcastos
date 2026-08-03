@@ -4,6 +4,7 @@ import {
   getCloudSaveSql,
   type ScriptIssueRow,
 } from "@/lib/cloud-save-db"
+import { requireUser } from "@/lib/auth-db"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -30,15 +31,20 @@ function issueFromRow(row: ScriptIssueRow) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const sql = getCloudSaveSql()
   if (!sql) return Response.json({ issues: [], status: cloudSaveStatus() })
+
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
 
   try {
     await ensureScriptIssuesSchema(sql)
     const rows = (await sql`
       SELECT id, show_id, show_date, link_title, hour, link_position, flagged_text, said_instead, resolved_at, created_at, updated_at
       FROM broadcastos_script_issues
+      WHERE user_id = ${userId}
       ORDER BY created_at DESC
       LIMIT 200
     `) as ScriptIssueRow[]
@@ -51,6 +57,10 @@ export async function GET() {
 export async function POST(request: Request) {
   const sql = getCloudSaveSql()
   if (!sql) return Response.json({ saved: false, status: cloudSaveStatus() })
+
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
 
   try {
     const body = (await request.json()) as {
@@ -70,9 +80,10 @@ export async function POST(request: Request) {
 
     await ensureScriptIssuesSchema(sql)
     await sql`
-      INSERT INTO broadcastos_script_issues (id, show_id, show_date, link_title, hour, link_position, flagged_text, said_instead, resolved_at, updated_at)
+      INSERT INTO broadcastos_script_issues (id, user_id, show_id, show_date, link_title, hour, link_position, flagged_text, said_instead, resolved_at, updated_at)
       VALUES (
         ${body.id},
+        ${userId},
         ${body.showId ?? ""},
         ${body.showDate ?? ""},
         ${body.linkTitle},
@@ -88,6 +99,7 @@ export async function POST(request: Request) {
         said_instead = EXCLUDED.said_instead,
         resolved_at = EXCLUDED.resolved_at,
         updated_at = NOW()
+      WHERE broadcastos_script_issues.user_id = ${userId}
     `
     return Response.json({ saved: true })
   } catch (error) {
@@ -99,12 +111,16 @@ export async function DELETE(request: Request) {
   const sql = getCloudSaveSql()
   if (!sql) return Response.json({ deleted: false, status: cloudSaveStatus() })
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   try {
     const issueId = new URL(request.url).searchParams.get("issueId")
     if (!issueId) return Response.json({ deleted: false, error: "issueId is required." }, { status: 400 })
 
     await ensureScriptIssuesSchema(sql)
-    await sql`DELETE FROM broadcastos_script_issues WHERE id = ${issueId}`
+    await sql`DELETE FROM broadcastos_script_issues WHERE id = ${issueId} AND user_id = ${userId}`
     return Response.json({ deleted: true })
   } catch (error) {
     return Response.json({ deleted: false, error: error instanceof Error ? error.message : "Could not delete that issue." }, { status: 500 })

@@ -17,6 +17,7 @@ import {
   type PresenterHubImportKind,
   type PresenterHubSource,
 } from "@/lib/presenter-hub"
+import { requireUser } from "@/lib/auth-db"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -113,7 +114,7 @@ function findMatchingLiner(existingLiners: LinerArchiveItem[], title: string, sc
   })
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const sql = getCloudSaveSql()
   if (!sql) {
     return Response.json({
@@ -124,12 +125,17 @@ export async function GET() {
     })
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   try {
     await ensurePresenterHubSchema(sql)
 
     const importRows = await sql`
       SELECT id, title, kind, source_label, week_start, show_name, original_filename, content, created_at
       FROM broadcastos_presenter_imports
+      WHERE user_id = ${userId}
       ORDER BY created_at DESC
       LIMIT 80
     ` as PresenterHubImportRow[]
@@ -137,6 +143,7 @@ export async function GET() {
     const linerRows = await sql`
       SELECT id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at
       FROM broadcastos_liner_archive
+      WHERE user_id = ${userId}
       ORDER BY week_start DESC, created_at DESC
       LIMIT 80
     ` as PresenterHubLinerRow[]
@@ -172,6 +179,10 @@ export async function POST(request: Request) {
     )
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   try {
     await ensurePresenterHubSchema(sql)
 
@@ -192,8 +203,8 @@ export async function POST(request: Request) {
     const createdAt = new Date().toISOString()
 
     const importRows = await sql`
-      INSERT INTO broadcastos_presenter_imports (id, title, kind, source_label, week_start, show_name, original_filename, content, created_at)
-      VALUES (${id}, ${title}, ${kind}, ${sourceLabel}, ${weekStart}, ${showName}, ${body.originalFilename ?? null}, ${content}, ${createdAt})
+      INSERT INTO broadcastos_presenter_imports (id, user_id, title, kind, source_label, week_start, show_name, original_filename, content, created_at)
+      VALUES (${id}, ${userId}, ${title}, ${kind}, ${sourceLabel}, ${weekStart}, ${showName}, ${body.originalFilename ?? null}, ${content}, ${createdAt})
       RETURNING id, title, kind, source_label, week_start, show_name, original_filename, content, created_at
     ` as PresenterHubImportRow[]
 
@@ -220,7 +231,7 @@ export async function POST(request: Request) {
     const existingRows = await sql`
       SELECT id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at
       FROM broadcastos_liner_archive
-      WHERE week_start = ${weekStart}
+      WHERE week_start = ${weekStart} AND user_id = ${userId}
     ` as PresenterHubLinerRow[]
     const existingLiners = existingRows.map(linerFromRow)
     const savedLiners: LinerArchiveItem[] = []
@@ -243,7 +254,7 @@ export async function POST(request: Request) {
             first_used = COALESCE(first_used, ${usageDate}),
             last_used = ${usageDate},
             status = 'Active'
-          WHERE id = ${existing.id}
+          WHERE id = ${existing.id} AND user_id = ${userId}
         `
         savedLiners.push({ ...existing, showsUsed, usageCount, lastUsed: usageDate, firstUsed: existing.firstUsed ?? usageDate })
       } else {
@@ -261,8 +272,8 @@ export async function POST(request: Request) {
           createdAt: new Date().toISOString(),
         }
         await sql`
-          INSERT INTO broadcastos_liner_archive (id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
-          VALUES (${created.id}, ${created.title}, ${created.script}, ${created.weekStart}, ${id}, ${JSON.stringify(created.showsUsed)}::jsonb, 1, ${usageDate}, ${usageDate}, 'Active', ${created.createdAt})
+          INSERT INTO broadcastos_liner_archive (id, user_id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
+          VALUES (${created.id}, ${userId}, ${created.title}, ${created.script}, ${created.weekStart}, ${id}, ${JSON.stringify(created.showsUsed)}::jsonb, 1, ${usageDate}, ${usageDate}, 'Active', ${created.createdAt})
         `
         existingLiners.push(created)
         savedLiners.push(created)
@@ -284,14 +295,15 @@ export async function POST(request: Request) {
             first_used = COALESCE(first_used, ${liner.firstUsed ?? null}),
             last_used = COALESCE(${liner.lastUsed ?? null}, last_used),
             status = ${liner.status}
-          WHERE id = ${existing.id}
+          WHERE id = ${existing.id} AND user_id = ${userId}
         `
         savedLiners.push({ ...existing, showsUsed, usageCount })
       } else {
         await sql`
-          INSERT INTO broadcastos_liner_archive (id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
+          INSERT INTO broadcastos_liner_archive (id, user_id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
           VALUES (
             ${liner.id},
+            ${userId},
             ${liner.title},
             ${liner.script},
             ${liner.weekStart},
@@ -330,6 +342,10 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "Online storage is not configured yet.", status: cloudSaveStatus() }, { status: 503 })
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   try {
     await ensurePresenterHubSchema(sql)
 
@@ -340,8 +356,8 @@ export async function DELETE(request: Request) {
       return Response.json({ error: "linerId or importId is needed." }, { status: 400 })
     }
 
-    if (linerId) await sql`DELETE FROM broadcastos_liner_archive WHERE id = ${linerId}`
-    if (importId) await sql`DELETE FROM broadcastos_presenter_imports WHERE id = ${importId}`
+    if (linerId) await sql`DELETE FROM broadcastos_liner_archive WHERE id = ${linerId} AND user_id = ${userId}`
+    if (importId) await sql`DELETE FROM broadcastos_presenter_imports WHERE id = ${importId} AND user_id = ${userId}`
     return Response.json({ ok: true, status: cloudSaveStatus() })
   } catch (error) {
     return Response.json({ error: errorMessage(error), status: cloudSaveStatus() }, { status: 500 })

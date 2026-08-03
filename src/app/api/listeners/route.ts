@@ -4,6 +4,7 @@ import {
   getCloudSaveSql,
   type ListenerLogRow,
 } from "@/lib/cloud-save-db"
+import { requireUser } from "@/lib/auth-db"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -51,6 +52,10 @@ export async function GET(request: Request) {
     return Response.json({ entries: [], totals: [], shows: [], allTime: { messages: 0, listeners: 0 }, status: cloudSaveStatus() })
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   await ensureListenerLogSchema(sql)
 
   const url = new URL(request.url)
@@ -61,7 +66,7 @@ export async function GET(request: Request) {
     ? (await sql`
         SELECT id, name_key, display_name, show_id, show_date, message_count, source_counts, created_at, updated_at
         FROM broadcastos_listener_log
-        WHERE show_id = ${showId} AND show_date = ${showDate}
+        WHERE user_id = ${userId} AND show_id = ${showId} AND show_date = ${showDate}
         ORDER BY message_count DESC, display_name ASC
       ` as ListenerLogRow[]).map(entryFromRow)
     : []
@@ -73,6 +78,7 @@ export async function GET(request: Request) {
       COUNT(DISTINCT show_date || show_id)::int AS show_count,
       MAX(show_date) AS last_heard
     FROM broadcastos_listener_log
+    WHERE user_id = ${userId}
     GROUP BY name_key
     ORDER BY last_heard DESC, total_messages DESC
     LIMIT 500
@@ -85,6 +91,7 @@ export async function GET(request: Request) {
       SUM(message_count)::int AS messages,
       COUNT(*)::int AS names
     FROM broadcastos_listener_log
+    WHERE user_id = ${userId}
     GROUP BY show_id, show_date
     ORDER BY show_date DESC
     LIMIT 40
@@ -93,6 +100,7 @@ export async function GET(request: Request) {
   const sourceRows = await sql`
     SELECT key AS source, SUM(value::int)::int AS total
     FROM broadcastos_listener_log, jsonb_each_text(source_counts)
+    WHERE user_id = ${userId}
     GROUP BY key
     ORDER BY total DESC
   ` as { source: string; total: number }[]
@@ -128,6 +136,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "Online storage is not available yet.", status: cloudSaveStatus() }, { status: 503 })
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   await ensureListenerLogSchema(sql)
 
   const body = await request.json().catch(() => null) as { name?: string; showId?: string; showDate?: string; source?: string; delta?: number } | null
@@ -142,9 +154,9 @@ export async function POST(request: Request) {
   }
 
   const rows = await sql`
-    INSERT INTO broadcastos_listener_log (id, name_key, display_name, show_id, show_date, message_count, source_counts)
-    VALUES (${crypto.randomUUID()}, ${nameKey(name)}, ${name}, ${showId}, ${showDate}, 1, jsonb_build_object(${source}::text, 1))
-    ON CONFLICT (name_key, show_id, show_date)
+    INSERT INTO broadcastos_listener_log (id, user_id, name_key, display_name, show_id, show_date, message_count, source_counts)
+    VALUES (${crypto.randomUUID()}, ${userId}, ${nameKey(name)}, ${name}, ${showId}, ${showDate}, 1, jsonb_build_object(${source}::text, 1))
+    ON CONFLICT (user_id, name_key, show_id, show_date)
     DO UPDATE SET
       message_count = GREATEST(1, broadcastos_listener_log.message_count + ${delta}),
       source_counts = jsonb_set(
@@ -167,6 +179,10 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "Online storage is not available yet.", status: cloudSaveStatus() }, { status: 503 })
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   await ensureListenerLogSchema(sql)
 
   const url = new URL(request.url)
@@ -180,7 +196,7 @@ export async function DELETE(request: Request) {
 
   await sql`
     DELETE FROM broadcastos_listener_log
-    WHERE name_key = ${nameKey(name)} AND show_id = ${showId} AND show_date = ${showDate}
+    WHERE user_id = ${userId} AND name_key = ${nameKey(name)} AND show_id = ${showId} AND show_date = ${showDate}
   `
 
   return Response.json({ ok: true, status: cloudSaveStatus() })

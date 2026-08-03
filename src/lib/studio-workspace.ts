@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react"
 
 import { validateLinkFramework, type LinkFrameworkValues } from "@/lib/link-framework"
+import { scopedKey } from "@/lib/user-scope"
 
 export type StudioShowId = "sundays" | "afternoons" | "saturday"
 export type StudioMode = "in-studio" | "remote"
@@ -501,7 +502,7 @@ function normalizeMessage(message: ListenerMessage): ListenerMessage {
 }
 
 function getSnapshot() {
-  return window.localStorage.getItem(storageKey) ?? fallbackSnapshot
+  return window.localStorage.getItem(scopedKey(storageKey)) ?? fallbackSnapshot
 }
 
 function subscribe(listener: () => void) {
@@ -531,7 +532,7 @@ export function useStudioWorkspace() {
 
 export function saveStudioWorkspace(workspace: StudioWorkspace) {
   const next = { ...workspace, updatedAt: new Date().toISOString() }
-  window.localStorage.setItem(storageKey, JSON.stringify(next))
+  window.localStorage.setItem(scopedKey(storageKey), JSON.stringify(next))
   window.dispatchEvent(new Event(eventName))
 }
 

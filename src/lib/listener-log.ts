@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { scopedKey } from "@/lib/user-scope"
 
 export type ListenerSource = "whatsapp" | "instagram" | "text"
 
@@ -162,7 +163,7 @@ export function listenerNameKey(name: string) {
 }
 
 function localKey(showId: string, showDate: string) {
-  return `broadcastos-listeners:${showId}:${showDate || "undated"}`
+  return scopedKey(`broadcastos-listeners:${showId}:${showDate || "undated"}`)
 }
 
 function readLocal(showId: string, showDate: string): ListenerEntry[] {
@@ -188,7 +189,7 @@ const queueKey = "broadcastos-listener-sync-queue"
 
 function readQueue(): PendingLog[] {
   try {
-    const raw = window.localStorage.getItem(queueKey)
+    const raw = window.localStorage.getItem(scopedKey(queueKey))
     return raw ? (JSON.parse(raw) as PendingLog[]) : []
   } catch {
     return []
@@ -196,7 +197,7 @@ function readQueue(): PendingLog[] {
 }
 
 function writeQueue(queue: PendingLog[]) {
-  window.localStorage.setItem(queueKey, JSON.stringify(queue.slice(-200)))
+  window.localStorage.setItem(scopedKey(queueKey), JSON.stringify(queue.slice(-200)))
 }
 
 async function sendLog(pending: PendingLog) {

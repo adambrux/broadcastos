@@ -3,11 +3,11 @@ import {
   ensureCloudSaveSchema,
   ensurePresenterHubSchema,
   getCloudSaveSql,
-  validateCloudSaveRequest,
   type PresenterHubLinerRow,
   type SavedShowSessionRow,
   type SavedShowWorkspace,
 } from "@/lib/cloud-save-db"
+import { requireUser } from "@/lib/auth-db"
 import {
   extractLinerLinksFromShowItems,
   friendlyImportTitle,
@@ -61,11 +61,12 @@ function mergeShows(existing: string[], incoming: string[]) {
 }
 
 export async function GET(request: Request) {
-  const authResponse = validateCloudSaveRequest(request)
-  if (authResponse) return authResponse
-
   const sql = getCloudSaveSql()
   if (!sql) return Response.json({ sessions: [], status: cloudSaveStatus() })
+
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
 
   await ensureCloudSaveSchema(sql)
 
@@ -87,6 +88,7 @@ export async function GET(request: Request) {
         0
       )::int AS item_count
     FROM broadcastos_show_sessions
+    WHERE user_id = ${userId}
     ORDER BY updated_at DESC
     LIMIT 40
   ` as SavedShowSessionRow[]
@@ -95,9 +97,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authResponse = validateCloudSaveRequest(request)
-  if (authResponse) return authResponse
-
   const sql = getCloudSaveSql()
   if (!sql) {
     return Response.json(
@@ -105,6 +104,10 @@ export async function POST(request: Request) {
       { status: 503 }
     )
   }
+
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
 
   await ensurePresenterHubSchema(sql)
 
@@ -117,14 +120,15 @@ export async function POST(request: Request) {
   const workspaceJson = JSON.stringify({ ...workspace, updatedAt: new Date().toISOString() })
 
   const rows = await sql`
-    INSERT INTO broadcastos_show_sessions (id, title, show_id, show_date, workspace)
-    VALUES (${id}, ${title}, ${showId}, ${showDate}, ${workspaceJson}::jsonb)
+    INSERT INTO broadcastos_show_sessions (id, user_id, title, show_id, show_date, workspace)
+    VALUES (${id}, ${userId}, ${title}, ${showId}, ${showDate}, ${workspaceJson}::jsonb)
     ON CONFLICT (id) DO UPDATE SET
       title = EXCLUDED.title,
       show_id = EXCLUDED.show_id,
       show_date = EXCLUDED.show_date,
       workspace = EXCLUDED.workspace,
       updated_at = NOW()
+    WHERE broadcastos_show_sessions.user_id = ${userId}
     RETURNING id, title, show_id, show_date, created_at, updated_at
   ` as SavedShowSessionSaveRow[]
 
@@ -139,8 +143,8 @@ export async function POST(request: Request) {
     const importTitle = friendlyImportTitle("show-script", showDisplayName, weekStart)
 
     await sql`
-      INSERT INTO broadcastos_presenter_imports (id, title, kind, source_label, week_start, show_name, original_filename, content, created_at)
-      VALUES (${presenterImportId}, ${importTitle}, ${"show-script"}, ${"Show script"}, ${weekStart}, ${showDisplayName}, ${null}, ${showScriptContent}, ${new Date().toISOString()})
+      INSERT INTO broadcastos_presenter_imports (id, user_id, title, kind, source_label, week_start, show_name, original_filename, content, created_at)
+      VALUES (${presenterImportId}, ${userId}, ${importTitle}, ${"show-script"}, ${"Show script"}, ${weekStart}, ${showDisplayName}, ${null}, ${showScriptContent}, ${new Date().toISOString()})
       ON CONFLICT (id) DO UPDATE SET
         title = EXCLUDED.title,
         kind = EXCLUDED.kind,
@@ -156,7 +160,7 @@ export async function POST(request: Request) {
     const existingRows = await sql`
       SELECT id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at
       FROM broadcastos_liner_archive
-      WHERE week_start = ${weekStart}
+      WHERE week_start = ${weekStart} AND user_id = ${userId}
     ` as PresenterHubLinerRow[]
 
     const existingLiners = existingRows.map((row) => ({
@@ -195,14 +199,15 @@ export async function POST(request: Request) {
             first_used = COALESCE(first_used, ${showDate}),
             last_used = ${showDate},
             status = 'Active'
-          WHERE id = ${existing.id}
+          WHERE id = ${existing.id} AND user_id = ${userId}
         `
       } else {
         const newLinerId = crypto.randomUUID()
         await sql`
-          INSERT INTO broadcastos_liner_archive (id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
+          INSERT INTO broadcastos_liner_archive (id, user_id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
           VALUES (
             ${newLinerId},
+            ${userId},
             ${liner.title},
             ${liner.script},
             ${weekStart},

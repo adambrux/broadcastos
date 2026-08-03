@@ -3,6 +3,7 @@ import {
   ensureGameScoreSchema,
   getCloudSaveSql,
 } from "@/lib/cloud-save-db"
+import { requireUser } from "@/lib/auth-db"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -47,6 +48,10 @@ export async function GET(request: Request) {
     return Response.json({ month, months: [], gameDays: 0, standings: [], status: cloudSaveStatus() })
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   try {
     await ensureGameScoreSchema(sql)
 
@@ -55,7 +60,7 @@ export async function GET(request: Request) {
         SELECT name_key, display_name, show_date, points,
                MAX(points) OVER (PARTITION BY show_date) AS day_top
         FROM broadcastos_game_scores
-        WHERE show_id = ${showId} AND show_date LIKE ${`${month}-%`}
+        WHERE user_id = ${userId} AND show_id = ${showId} AND show_date LIKE ${`${month}-%`}
       )
       SELECT
         name_key,
@@ -73,13 +78,13 @@ export async function GET(request: Request) {
     const dayRows = await sql`
       SELECT COUNT(DISTINCT show_date)::int AS game_days
       FROM broadcastos_game_scores
-      WHERE show_id = ${showId} AND show_date LIKE ${`${month}-%`}
+      WHERE user_id = ${userId} AND show_id = ${showId} AND show_date LIKE ${`${month}-%`}
     ` as { game_days: number }[]
 
     const monthRows = await sql`
       SELECT DISTINCT LEFT(show_date, 7) AS month
       FROM broadcastos_game_scores
-      WHERE show_id = ${showId}
+      WHERE user_id = ${userId} AND show_id = ${showId}
       ORDER BY month DESC
       LIMIT 24
     ` as { month: string }[]
@@ -119,6 +124,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "Online storage is not available yet.", status: cloudSaveStatus() }, { status: 503 })
   }
 
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
+
   try {
     await ensureGameScoreSchema(sql)
 
@@ -141,14 +150,14 @@ export async function POST(request: Request) {
 
     await sql`
       DELETE FROM broadcastos_game_scores
-      WHERE show_id = ${showId} AND show_date = ${showDate}
+      WHERE user_id = ${userId} AND show_id = ${showId} AND show_date = ${showDate}
     `
 
     for (const [key, player] of players) {
       await sql`
-        INSERT INTO broadcastos_game_scores (id, name_key, display_name, show_id, show_date, points)
-        VALUES (${crypto.randomUUID()}, ${key}, ${player.name}, ${showId}, ${showDate}, ${player.points})
-        ON CONFLICT (name_key, show_id, show_date)
+        INSERT INTO broadcastos_game_scores (id, user_id, name_key, display_name, show_id, show_date, points)
+        VALUES (${crypto.randomUUID()}, ${userId}, ${key}, ${player.name}, ${showId}, ${showDate}, ${player.points})
+        ON CONFLICT (user_id, name_key, show_id, show_date)
         DO UPDATE SET display_name = ${player.name}, points = ${player.points}, updated_at = NOW()
       `
     }

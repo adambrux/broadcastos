@@ -21,6 +21,9 @@ export function AppSplashScreen() {
   const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
+    // The sign-in page stands alone: no splash over it.
+    if (window.location.pathname === "/login") return
+
     const storageKey = `broadcastos-splash-${broadcastOSVersion.code}`
     if (!window.sessionStorage.getItem(storageKey)) setVisible(true)
 

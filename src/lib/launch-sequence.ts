@@ -3,6 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react"
 
 import { type StudioShowId } from "@/lib/studio-workspace"
+import { scopedKey } from "@/lib/user-scope"
 
 export type LaunchLocation = "live-london" | "live-birmingham" | "pre-recorded"
 
@@ -81,7 +82,7 @@ export const duringShowSafetyReminder =
   "Standing reminder after every link: bring down the mic volume slider AND channel 3 on the mixer, where beds and cues live."
 
 function storageKey(showId: StudioShowId, date: string) {
-  return `${keyPrefix}:${showId}:${date || "undated"}`
+  return scopedKey(`${keyPrefix}:${showId}:${date || "undated"}`)
 }
 
 function defaultLocation(): LaunchLocation {

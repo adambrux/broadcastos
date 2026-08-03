@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react"
 
 import { studioShows, type StudioShowId } from "@/lib/studio-workspace"
+import { scopedKey } from "@/lib/user-scope"
 
 export type ScriptIssue = {
   id: string
@@ -23,7 +24,7 @@ const eventName = "broadcastos-script-issues-change"
 
 function readLocal(): ScriptIssue[] {
   try {
-    const raw = window.localStorage.getItem(storageKey)
+    const raw = window.localStorage.getItem(scopedKey(storageKey))
     return raw ? (JSON.parse(raw) as ScriptIssue[]) : []
   } catch {
     return []
@@ -31,7 +32,7 @@ function readLocal(): ScriptIssue[] {
 }
 
 function writeLocal(issues: ScriptIssue[]) {
-  window.localStorage.setItem(storageKey, JSON.stringify(issues))
+  window.localStorage.setItem(scopedKey(storageKey), JSON.stringify(issues))
   window.dispatchEvent(new Event(eventName))
 }
 
@@ -94,7 +95,7 @@ export async function syncScriptIssues() {
 const emptySnapshot = "[]"
 
 function getSnapshot() {
-  return window.localStorage.getItem(storageKey) ?? emptySnapshot
+  return window.localStorage.getItem(scopedKey(storageKey)) ?? emptySnapshot
 }
 
 function subscribe(listener: () => void) {

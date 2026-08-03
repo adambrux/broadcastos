@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 import {
   BarChart3,
   ChevronDown,
@@ -35,8 +36,22 @@ import {
 import { isAdamShowLive } from "@/lib/schedule-data"
 import { scheduleServerClock, useScheduleClock } from "@/lib/use-schedule-clock"
 import { cn } from "@/lib/utils"
-import { currentUser } from "@/lib/mock-data"
 import { broadcastOSVersion } from "@/lib/version"
+import { clearActiveUser, getActiveUser, setActiveUser, type ActiveUser } from "@/lib/user-scope"
+
+function initialsFor(name: string) {
+  return name.split(/\s+/).filter(Boolean).map((word) => word[0]).join("").slice(0, 2).toUpperCase() || "PG"
+}
+
+async function signOut() {
+  try {
+    await fetch("/api/auth/logout", { method: "POST" })
+  } catch {
+    // Even if the network fails, clear this machine.
+  }
+  clearActiveUser()
+  window.location.href = "/login"
+}
 
 const navigation = [
   { label: "Today", href: "/today", icon: Gauge },
@@ -117,6 +132,31 @@ export function StudioLivePill({ dark = false, className }: { dark?: boolean; cl
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const [user, setUser] = useState<ActiveUser | null>(null)
+
+  useEffect(() => {
+    setUser(getActiveUser())
+    fetch("/api/auth/session")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data?.user) {
+          const fresh: ActiveUser = { id: data.user.id, name: data.user.displayName, role: data.user.role }
+          setActiveUser(fresh)
+          setUser(fresh)
+        } else {
+          clearActiveUser()
+          setUser(null)
+          if (window.location.pathname !== "/login") window.location.href = "/login"
+        }
+      })
+      .catch(() => {
+        // Offline: keep whoever was signed in on this machine.
+      })
+  }, [])
+
+  if (pathname === "/login") {
+    return <>{children}</>
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -133,20 +173,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-accent">
-              <span className="grid size-9 place-items-center rounded-full bg-brand-indigo text-xs font-semibold text-white">{currentUser.initials}</span>
+              <span className="grid size-9 place-items-center rounded-full bg-brand-indigo text-xs font-semibold text-white">{user ? initialsFor(user.name) : "…"}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-medium">{currentUser.name}</span>
-                <span className="block truncate text-[11px] text-muted-foreground">{currentUser.role}</span>
+                <span className="block truncate text-[13px] font-medium">{user?.name ?? "Signing in…"}</span>
+                <span className="block truncate text-[11px] text-muted-foreground">{user?.role === "owner" ? "Owner" : "Presenter"}</span>
               </span>
               <ChevronDown className="size-4 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="right" className="w-52">
-            <DropdownMenuLabel>{currentUser.name}</DropdownMenuLabel>
+            <DropdownMenuLabel>{user?.name ?? "BroadcastOS"}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Switch station</DropdownMenuItem>
-            <DropdownMenuItem>Sign out</DropdownMenuItem>
+            {user?.role === "owner" && (
+              <DropdownMenuItem asChild>
+                <Link href="/accounts">Accounts</Link>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={() => signOut()}>Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </aside>
@@ -167,6 +210,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Brand />
               </SheetHeader>
               <NavigationLinks mobile />
+              <div className="mt-8 space-y-2 border-t border-border/60 pt-5">
+                <p className="px-1 text-[12px] text-muted-foreground">{user ? `Signed in as ${user.name}` : "Signing in…"}</p>
+                {user?.role === "owner" && (
+                  <Link href="/accounts" className="block px-1 text-[13px] font-medium text-brand-indigo">Accounts</Link>
+                )}
+                <button type="button" onClick={() => signOut()} className="px-1 text-[13px] font-medium text-red-600">
+                  Sign out
+                </button>
+              </div>
             </SheetContent>
           </Sheet>
         </div>

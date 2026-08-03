@@ -2,8 +2,8 @@ import {
   cloudSaveStatus,
   ensureCloudSaveSchema,
   getCloudSaveSql,
-  validateCloudSaveRequest,
 } from "@/lib/cloud-save-db"
+import { requireUser } from "@/lib/auth-db"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -23,8 +23,9 @@ type SavedShowSessionDetailRow = {
 }
 
 export async function GET(request: Request, context: RouteContext) {
-  const authResponse = validateCloudSaveRequest(request)
-  if (authResponse) return authResponse
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
 
   const sql = getCloudSaveSql()
   if (!sql) {
@@ -40,7 +41,7 @@ export async function GET(request: Request, context: RouteContext) {
   const rows = await sql`
     SELECT id, title, show_id, show_date, workspace, created_at, updated_at
     FROM broadcastos_show_sessions
-    WHERE id = ${id}
+    WHERE id = ${id} AND user_id = ${userId}
     LIMIT 1
   ` as SavedShowSessionDetailRow[]
 
@@ -51,8 +52,9 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const authResponse = validateCloudSaveRequest(request)
-  if (authResponse) return authResponse
+  const auth = await requireUser(request)
+  if ("response" in auth) return auth.response
+  const userId = auth.user.id
 
   const sql = getCloudSaveSql()
   if (!sql) {
@@ -65,7 +67,7 @@ export async function DELETE(request: Request, context: RouteContext) {
   await ensureCloudSaveSchema(sql)
 
   const { id } = await context.params
-  await sql`DELETE FROM broadcastos_show_sessions WHERE id = ${id}`
+  await sql`DELETE FROM broadcastos_show_sessions WHERE id = ${id} AND user_id = ${userId}`
 
   return Response.json({ ok: true, status: cloudSaveStatus() })
 }
