@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.23 · Saves that shout · 5 August 2026
+
+- A failed online save can never hide again: if the device you're on is signed out, the Produce page shows a big red warning with a sign-in button… your show stays safe on the device, and one more press of Save online sends it up after you sign in.
+- The app now re-checks that you're signed in every few minutes and every time you come back to its tab… studio machines that sit open for days find out they're signed out BEFORE you need them, with a red banner across the top instead of a silent failure.
+- When a newer version of the app exists, a small banner invites you to reload… no more weeks-old copies of the app quietly missing new features.
+
 ## v2.22 · Your show, your rules · 3 August 2026
 
 - Every presenter account now carries its own show name… set it when the owner creates the account, and it appears everywhere the app names a show, instead of the built-in shows.

@@ -160,6 +160,7 @@ export function UsableProducerDesk() {
   const [cloudStatus, setCloudStatus] = useState<CloudSaveStatus | null>(null)
   const [cloudBusy, setCloudBusy] = useState(false)
   const [cloudMessage, setCloudMessage] = useState("")
+  const [signedOutHere, setSignedOutHere] = useState(false)
 
   const selected = useMemo(
     () => workspace.items.find((item) => item.id === selectedId) ?? workspace.items[0],
@@ -210,6 +211,11 @@ export function UsableProducerDesk() {
       })
       const data = await response.json().catch(() => null)
       if (data?.status) setCloudStatus(data.status)
+      if (response.status === 401) {
+        setSignedOutHere(true)
+        throw new Error("THIS DEVICE IS SIGNED OUT… sign in to see and save online shows.")
+      }
+      setSignedOutHere(false)
       if (!response.ok) throw new Error(data?.error ?? "Cloud save is not available yet.")
       setCloudSessions(Array.isArray(data?.sessions) ? data.sessions : [])
       setCloudMessage(message)
@@ -234,6 +240,11 @@ export function UsableProducerDesk() {
       })
       const data = await response.json().catch(() => null)
       if (data?.status) setCloudStatus(data.status)
+      if (response.status === 401) {
+        setSignedOutHere(true)
+        throw new Error("THIS DEVICE IS SIGNED OUT… nothing is saving online. Sign in, then press Save online again. Your show is safe on this device.")
+      }
+      setSignedOutHere(false)
       if (!response.ok) throw new Error(data?.error ?? "Could not save this show online.")
       setCloudTitle("")
       await refreshCloudSessions("Show saved online. Open this app on iPad and load it from Saved Shows.")
@@ -518,7 +529,14 @@ export function UsableProducerDesk() {
               </Field>
             </div>
 
-            {cloudMessage && (
+            {signedOutHere && (
+              <div className="rounded-2xl border-2 border-red-300 bg-red-50 p-4">
+                <p className="text-sm font-bold text-red-700">This device is signed out… nothing is saving online.</p>
+                <p className="mt-1 text-xs text-red-700">Your show is safe on this device. Sign in, then press Save online again.</p>
+                <a href="/login" className="mt-2 inline-block rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white">Sign in now</a>
+              </div>
+            )}
+            {cloudMessage && !signedOutHere && (
               <div className="rounded-2xl border bg-white/70 p-4 text-xs leading-5">
                 <p className="rounded-xl bg-brand-soft px-3 py-2 font-semibold text-brand-indigo">{cloudMessage}</p>
               </div>

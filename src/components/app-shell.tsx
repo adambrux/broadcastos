@@ -133,25 +133,51 @@ export function StudioLivePill({ dark = false, className }: { dark?: boolean; cl
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [user, setUser] = useState<ActiveUser | null>(null)
+  const [sessionLost, setSessionLost] = useState(false)
+  const [newVersionReady, setNewVersionReady] = useState(false)
 
   useEffect(() => {
     setUser(getActiveUser())
-    fetch("/api/auth/session")
-      .then((response) => response.json())
-      .then((data) => {
+
+    let firstCheck = true
+    async function checkSession() {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" })
+        const data = await response.json()
+        if (typeof data?.version === "string" && data.version !== broadcastOSVersion.code) {
+          setNewVersionReady(true)
+        }
         if (data?.user) {
           const fresh: ActiveUser = { id: data.user.id, name: data.user.displayName, role: data.user.role, showName: data.user.showName ?? null, arcadeEnabled: Boolean(data.user.arcadeEnabled) }
           setActiveUser(fresh)
           setUser(fresh)
+          setSessionLost(false)
         } else {
           clearActiveUser()
           setUser(null)
-          if (window.location.pathname !== "/login") window.location.href = "/login"
+          if (firstCheck && window.location.pathname !== "/login") {
+            // Fresh page load with no session: straight to sign-in.
+            window.location.href = "/login"
+          } else {
+            // Mid-session loss on a long-lived tab: never yank the page away,
+            // show the banner instead… a live read might be on screen.
+            setSessionLost(true)
+          }
         }
-      })
-      .catch(() => {
+      } catch {
         // Offline: keep whoever was signed in on this machine.
-      })
+      }
+      firstCheck = false
+    }
+
+    void checkSession()
+    const interval = window.setInterval(() => void checkSession(), 5 * 60 * 1000)
+    const onFocus = () => void checkSession()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
   }, [])
 
   if (pathname === "/login") {
@@ -160,6 +186,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {sessionLost && (
+        <a href="/login" className="fixed inset-x-0 top-0 z-[90] block bg-red-600 px-4 py-2.5 text-center text-sm font-bold text-white">
+          This device is signed out… nothing is saving online. Tap here to sign in again.
+        </a>
+      )}
+      {!sessionLost && newVersionReady && (
+        <button type="button" onClick={() => window.location.reload()} className="fixed inset-x-0 top-0 z-[90] block w-full bg-brand-indigo px-4 py-2 text-center text-xs font-bold text-white">
+          A newer BroadcastOS is ready… tap to reload when you have a moment.
+        </button>
+      )}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[224px] border-r border-border/70 bg-sidebar px-4 py-7 lg:flex lg:flex-col">
         <div className="px-2">
           <Brand />
