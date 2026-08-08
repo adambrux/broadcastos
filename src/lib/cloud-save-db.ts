@@ -225,6 +225,9 @@ export async function ensureGameScoreSchema(sql: BroadcastSql) {
     )
   `
 
+  // Extra Mile bonuses: counted in the monthly totals, never in the day's win.
+  await sql`ALTER TABLE broadcastos_game_scores ADD COLUMN IF NOT EXISTS bonus INTEGER NOT NULL DEFAULT 0`
+
   await sql`
     CREATE INDEX IF NOT EXISTS broadcastos_game_scores_month_idx
     ON broadcastos_game_scores (show_id, show_date DESC)

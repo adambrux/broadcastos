@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.24 · The Extra Mile · 8 August 2026
+
+- The game scoreboard now hands out Extra Mile stars: tap the star next to a player to give a bonus point (singing the answer, bringing a first-time friend… whatever earns it), and tap the amber count to take one back.
+- Stars are foolproof by design: they pour into the monthly leaderboard totals, but today's winner is decided on game points alone… no amount of generosity can move a day's crown.
+- The monthly tables (On Air and Insights) show who's carrying Extra Mile stars, so the catch-up race is visible all month.
+
 ## v2.23 · Saves that shout · 5 August 2026
 
 - A failed online save can never hide again: if the device you're on is signed out, the Produce page shows a big red warning with a sign-in button… your show stays safe on the device, and one more press of Save online sends it up after you sign in.

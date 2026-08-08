@@ -20,6 +20,7 @@ type StandingRow = {
   name_key: string
   display_name: string
   points: number
+  bonus_points: number
   days_played: number
   wins: number
   last_played: string
@@ -55,9 +56,11 @@ export async function GET(request: Request) {
   try {
     await ensureGameScoreSchema(sql)
 
+    // Extra Mile rule: bonuses pour into the month's total, but the day's win
+    // is judged on game points alone… day_top deliberately ignores bonus.
     const standings = await sql`
       WITH daily AS (
-        SELECT name_key, display_name, show_date, points,
+        SELECT name_key, display_name, show_date, points, bonus,
                MAX(points) OVER (PARTITION BY show_date) AS day_top
         FROM broadcastos_game_scores
         WHERE user_id = ${userId} AND show_id = ${showId} AND show_date LIKE ${`${month}-%`}
@@ -65,7 +68,8 @@ export async function GET(request: Request) {
       SELECT
         name_key,
         MIN(display_name) AS display_name,
-        SUM(points)::int AS points,
+        SUM(points + bonus)::int AS points,
+        SUM(bonus)::int AS bonus_points,
         COUNT(*)::int AS days_played,
         SUM(CASE WHEN points = day_top AND points > 0 THEN 1 ELSE 0 END)::int AS wins,
         MAX(show_date) AS last_played
@@ -97,6 +101,7 @@ export async function GET(request: Request) {
         name: row.display_name,
         nameKey: row.name_key,
         points: row.points,
+        bonusPoints: row.bonus_points,
         daysPlayed: row.days_played,
         wins: row.wins,
         lastPlayed: row.last_played,
@@ -111,7 +116,7 @@ export async function GET(request: Request) {
 type ScoresPayload = {
   showId?: string
   showDate?: string
-  players?: { name?: string; points?: number }[]
+  players?: { name?: string; points?: number; bonus?: number }[]
 }
 
 /**
@@ -138,14 +143,19 @@ export async function POST(request: Request) {
       return Response.json({ error: "A show date is needed." }, { status: 400 })
     }
 
-    const players = new Map<string, { name: string; points: number }>()
+    const players = new Map<string, { name: string; points: number; bonus: number }>()
     for (const player of Array.isArray(body?.players) ? body.players : []) {
       const name = typeof player?.name === "string" ? player.name.replace(/\s+/g, " ").trim() : ""
       if (!name) continue
       const points = Math.max(0, Math.min(99, Math.round(Number(player?.points) || 0)))
+      const bonus = Math.max(0, Math.min(99, Math.round(Number(player?.bonus) || 0)))
       const key = nameKey(name)
       const existing = players.get(key)
-      if (!existing || points > existing.points) players.set(key, { name, points })
+      players.set(key, {
+        name,
+        points: Math.max(points, existing?.points ?? 0),
+        bonus: Math.max(bonus, existing?.bonus ?? 0),
+      })
     }
 
     await sql`
@@ -155,10 +165,10 @@ export async function POST(request: Request) {
 
     for (const [key, player] of players) {
       await sql`
-        INSERT INTO broadcastos_game_scores (id, user_id, name_key, display_name, show_id, show_date, points)
-        VALUES (${crypto.randomUUID()}, ${userId}, ${key}, ${player.name}, ${showId}, ${showDate}, ${player.points})
+        INSERT INTO broadcastos_game_scores (id, user_id, name_key, display_name, show_id, show_date, points, bonus)
+        VALUES (${crypto.randomUUID()}, ${userId}, ${key}, ${player.name}, ${showId}, ${showDate}, ${player.points}, ${player.bonus})
         ON CONFLICT (user_id, name_key, show_id, show_date)
-        DO UPDATE SET display_name = ${player.name}, points = ${player.points}, updated_at = NOW()
+        DO UPDATE SET display_name = ${player.name}, points = ${player.points}, bonus = ${player.bonus}, updated_at = NOW()
       `
     }
 

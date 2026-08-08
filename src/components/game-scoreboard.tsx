@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ChevronDown, Crown, Minus, Plus, RotateCcw, Trophy, X } from "lucide-react"
+import { ChevronDown, Crown, Minus, Plus, RotateCcw, Star, Trophy, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,8 @@ type Mark = "" | "y" | "n"
 type Player = {
   name: string
   marks: Mark[]
+  /** Extra Mile stars: count in the monthly totals, never in today's win. */
+  bonus?: number
 }
 
 type ScoreboardState = {
@@ -37,6 +39,10 @@ function readState(showId: string, showDate: string): ScoreboardState {
 
 function score(player: Player) {
   return player.marks.filter((mark) => mark === "y").length
+}
+
+function bonusOf(player: Player) {
+  return Math.max(0, Math.min(9, Math.round(player.bonus ?? 0)))
 }
 
 /**
@@ -81,7 +87,7 @@ function GameScoreboardInner({
     if (syncTimer.current !== null) window.clearTimeout(syncTimer.current)
     syncTimer.current = window.setTimeout(() => {
       syncTimer.current = null
-      syncArcadeScores(showDate, next.players.map((player) => ({ name: player.name, points: score(player) })))
+      syncArcadeScores(showDate, next.players.map((player) => ({ name: player.name, points: score(player), bonus: bonusOf(player) })))
         .then(() => setMonthRefresh((value) => value + 1))
         .catch(() => {})
     }, 1200)
@@ -123,6 +129,16 @@ function GameScoreboardInner({
 
   function removePlayer(playerName: string) {
     save({ ...state, players: state.players.filter((player) => player.name !== playerName) })
+  }
+
+  // Extra Mile stars: tap the star to give one, tap the amber count to take
+  // one back. They ride to the monthly board but never touch today's ranking.
+  function giveStar(playerName: string) {
+    save({ ...state, players: state.players.map((player) => player.name === playerName ? { ...player, bonus: Math.min(9, bonusOf(player) + 1) } : player) })
+  }
+
+  function takeStar(playerName: string) {
+    save({ ...state, players: state.players.map((player) => player.name === playerName ? { ...player, bonus: Math.max(0, bonusOf(player) - 1) } : player) })
   }
 
   function reset() {
@@ -209,6 +225,14 @@ function GameScoreboardInner({
                       index === 0 && score(player) > 0 ? "bg-amber-300 text-ink" : "bg-white/10 text-white/60"
                     )}>{index + 1}</span>
                     <p className="min-w-0 flex-1 truncate text-sm font-semibold">{player.name}</p>
+                    {bonusOf(player) > 0 && (
+                      <button type="button" onClick={() => takeStar(player.name)} aria-label={`Take one Extra Mile star from ${player.name}`} className="rounded-md bg-amber-300/15 px-1.5 py-1 font-mono text-[10px] font-bold text-amber-200 hover:bg-amber-300/25">
+                        +{bonusOf(player)}★
+                      </button>
+                    )}
+                    <button type="button" onClick={() => giveStar(player.name)} aria-label={`Give ${player.name} an Extra Mile star`} className="grid size-7 place-items-center rounded-md text-amber-300/50 hover:bg-amber-300/15 hover:text-amber-200">
+                      <Star className="size-3.5" />
+                    </button>
                     <Badge className="bg-white/10 font-mono text-white">{score(player)}/{state.questions}</Badge>
                     <button type="button" onClick={() => removePlayer(player.name)} aria-label={`Remove ${player.name}`} className="grid size-7 place-items-center rounded-md text-white/25 hover:bg-white/10 hover:text-white">
                       <X className="size-3" />
@@ -239,6 +263,11 @@ function GameScoreboardInner({
                   {winners.length === 1
                     ? `${winners[0].name} leads with ${topScore}/${state.questions}`
                     : `${winners.map((winner) => winner.name).join(" and ")} tied on ${topScore}/${state.questions}`}
+                </p>
+              )}
+              {state.players.some((player) => bonusOf(player) > 0) && (
+                <p className="text-center text-[10px] leading-4 text-white/30">
+                  ★ Extra Mile stars ride to the monthly board… they never decide today's win.
                 </p>
               )}
             </div>
@@ -273,6 +302,9 @@ function GameScoreboardInner({
                     )}>{index + 1}</span>
                     <p className="min-w-0 flex-1 truncate text-xs font-semibold">{standing.name}</p>
                     <span className="text-[10px] text-white/35">{standing.daysPlayed} day{standing.daysPlayed === 1 ? "" : "s"}</span>
+                    {(standing.bonusPoints ?? 0) > 0 && (
+                      <span className="font-mono text-[10px] font-bold text-amber-200/60">+{standing.bonusPoints}★</span>
+                    )}
                     <span className="font-mono text-xs font-bold text-amber-200">{standing.points} pts</span>
                   </div>
                 ))}

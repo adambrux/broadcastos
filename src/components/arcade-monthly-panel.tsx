@@ -34,7 +34,7 @@ function ArcadeMonthlyPanelInner() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">Afternoon Arcade · monthly leaderboard</p>
               <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">{arcadeMonthLabel(month)} final count</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Every game day's scoreboard adds up here… consistency can beat daily wins. The top name takes the monthly crown on the last show of the month.
+                Every game day's scoreboard adds up here… consistency can beat daily wins, and Extra Mile stars count too. The top name takes the monthly crown on the last show of the month… daily wins stay game-points only.
               </p>
             </div>
           </div>
@@ -87,6 +87,7 @@ function ArcadeMonthlyPanelInner() {
                   <p className="text-[11px] text-muted-foreground">
                     Played {standing.daysPlayed} day{standing.daysPlayed === 1 ? "" : "s"}
                     {standing.wins > 0 ? ` · won the day ${standing.wins} time${standing.wins === 1 ? "" : "s"}` : ""}
+                    {(standing.bonusPoints ?? 0) > 0 ? ` · ${standing.bonusPoints}★ Extra Mile` : ""}
                   </p>
                 </div>
                 <Badge className="bg-amber-100 font-mono text-amber-900">{standing.points} pts</Badge>

@@ -6,6 +6,7 @@ export type ArcadeStanding = {
   name: string
   nameKey: string
   points: number
+  bonusPoints: number
   daysPlayed: number
   wins: number
   lastPlayed: string
@@ -32,7 +33,7 @@ export function arcadeMonthLabel(month: string) {
 }
 
 /** Push one day's scoreboard to the cloud so the monthly totals stay live. */
-export async function syncArcadeScores(showDate: string, players: { name: string; points: number }[]) {
+export async function syncArcadeScores(showDate: string, players: { name: string; points: number; bonus?: number }[]) {
   await fetch("/api/game-scores", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
