@@ -146,6 +146,24 @@ function GameScoreboardInner({
     save({ questions: state.questions, players: [] })
   }
 
+  // Suggestions pull from the listener log AND the monthly board, so a
+  // returning player always matches their existing name… one spelling, one
+  // running total, no accidental twins like a lost letter creating a new player.
+  function suggestPlayers(query: string) {
+    const q = query.replace(/\s+/g, " ").trim().toLowerCase()
+    if (!q) return []
+    const pool = [...suggest(query), ...(monthly.data?.standings ?? []).map((standing) => standing.name)]
+    const merged: string[] = []
+    for (const name of pool) {
+      if (!name.toLowerCase().includes(q)) continue
+      if (merged.some((seen) => seen.toLowerCase() === name.toLowerCase())) continue
+      if (state.players.some((player) => player.name.toLowerCase() === name.toLowerCase())) continue
+      merged.push(name)
+      if (merged.length >= 6) break
+    }
+    return merged
+  }
+
   const ranked = [...state.players].sort((a, b) => score(b) - score(a))
   const topScore = ranked.length ? score(ranked[0]) : 0
   const winners = ranked.filter((player) => score(player) === topScore && topScore > 0)
@@ -196,9 +214,9 @@ function GameScoreboardInner({
                 <Plus className="size-4" />
               </Button>
             </div>
-            {suggest(nameInput).length > 0 && (
+            {suggestPlayers(nameInput).length > 0 && (
               <div className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-xl border border-white/15 bg-[#14151d] shadow-2xl">
-                {suggest(nameInput).map((name) => (
+                {suggestPlayers(nameInput).map((name) => (
                   <button
                     key={name}
                     type="button"

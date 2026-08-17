@@ -162,6 +162,10 @@ export function UsableOnAir() {
   const [issueText, setIssueText] = useState("")
   const [issueInstead, setIssueInstead] = useState("")
   const [issueNotice, setIssueNotice] = useState("")
+  const [transitionCard, setTransitionCard] = useState<{ label: string; title: string } | null>(null)
+  // Prompter speed preference: 1 is the classic pace, saved on this device.
+  const [prompterSpeed, setPrompterSpeed] = useState(1)
+  const transitionTimer = useRef<number | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const prompterControl = useRef<{ raf: number; last: number; speed: number; target: number; pos: number; paused: boolean } | null>(null)
   const countdownTimer = useRef<number | null>(null)
@@ -210,6 +214,23 @@ export function UsableOnAir() {
 
   useEffect(() => stopPrompter, [stopPrompter])
 
+  useEffect(() => {
+    try {
+      const stored = Number(window.localStorage.getItem("broadcastos-prompter-speed"))
+      if (stored && stored >= 0.5 && stored <= 2) setPrompterSpeed(stored)
+    } catch { /* default pace stands */ }
+    return () => {
+      if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current)
+    }
+  }, [])
+
+  function cyclePrompterSpeed() {
+    const steps = [0.75, 1, 1.25, 1.5]
+    const next = steps[(steps.indexOf(prompterSpeed) + 1) % steps.length] ?? 1
+    setPrompterSpeed(next)
+    try { window.localStorage.setItem("broadcastos-prompter-speed", String(next)) } catch { /* fine */ }
+  }
+
   function startCountdown() {
     if (prompter !== "off") return
     setCountdown(5)
@@ -238,7 +259,7 @@ export function UsableOnAir() {
 
     const text = [current.context, current.recap, visibleMoment, current.cta, current.tease].join(" ")
     const words = text.trim().split(/\s+/).filter(Boolean).length
-    const seconds = Math.max(15, (words / wordsPerMinute) * 60)
+    const seconds = Math.max(15, (words / (wordsPerMinute * prompterSpeed)) * 60)
     // Roll to the bottom of the page so there is always somewhere to go.
     const target = container.scrollHeight - container.clientHeight
     const distance = target - container.scrollTop
@@ -303,7 +324,18 @@ export function UsableOnAir() {
         items: workspace.items.map((item) => item.id === current.id ? { ...item, done: true } : item),
       })
       setMarkingDone(false)
-      if (!isLastItem) moveToItem(activeIndex + 1)
+      if (!isLastItem) {
+        // A link change must be unmissable: flash the next link's number and
+        // title full-screen so a double-tap can never silently skip a link.
+        if (next) {
+          const nextHourItems = workspace.items.filter((item) => item.hour === next.hour)
+          const nextNumber = nextHourItems.findIndex((item) => item.id === next.id) + 1
+          setTransitionCard({ label: `LINK ${nextNumber || activeIndex + 2}`, title: next.title || "" })
+          if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current)
+          transitionTimer.current = window.setTimeout(() => setTransitionCard(null), 1600)
+        }
+        moveToItem(activeIndex + 1)
+      }
     }, 450)
   }
 
@@ -447,6 +479,15 @@ export function UsableOnAir() {
 
   return (
     <div ref={scrollContainerRef} className="fixed inset-0 z-[45] overflow-auto bg-[#08090d] text-white">
+      {transitionCard && (
+        <div className="pointer-events-none fixed inset-0 z-[80] grid place-items-center bg-black/85">
+          <div className="text-center">
+            <p className="text-xl font-bold uppercase tracking-[0.35em] text-emerald-300">Next</p>
+            <p className="mt-3 text-7xl font-black text-white sm:text-8xl">{transitionCard.label}</p>
+            <p className="mx-auto mt-5 max-w-2xl px-6 text-2xl font-semibold leading-9 text-white/85">{transitionCard.title}</p>
+          </div>
+        </div>
+      )}
       <StudioAmbient />
       {!launchSequence.complete && (
         <div className="fixed inset-0 z-[70] overflow-y-auto bg-[#08090d] p-5 text-white sm:p-8">
@@ -647,6 +688,16 @@ export function UsableOnAir() {
                       onClick={startCountdown}
                     >
                       <Play className="size-4" />Start reading
+                    </Button>
+                  )}
+                  {!responseGateOpen && prompter === "off" && !editing && (
+                    <Button
+                      variant="outline"
+                      className="h-10 rounded-xl border-white/15 bg-white/5 font-mono text-white hover:bg-white/10 hover:text-white"
+                      onClick={cyclePrompterSpeed}
+                      aria-label={`Reading speed ${prompterSpeed} times… tap to change`}
+                    >
+                      {prompterSpeed}x
                     </Button>
                   )}
                 </div>

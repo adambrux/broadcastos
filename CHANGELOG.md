@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.25 · The studio keeps up · 17 August 2026
+
+- The game scoreboard now suggests names from the monthly leaderboard as well as your listener log… so a returning player always matches their existing spelling, points land on the right person, and a slip of the keyboard can't quietly create a twin.
+- Moving between links is now unmissable: when you press Mark done, the next link's number and title flash full-screen in big white letters before the page changes… no more silently skipped links from a double-tap.
+- The reading scroll now has a speed of your own: a small speed button sits next to Start reading (0.75x to 1.5x), and the app remembers your choice on that device.
+
 ## v2.24 · The Extra Mile · 8 August 2026
 
 - The game scoreboard now hands out Extra Mile stars: tap the star next to a player to give a bonus point (singing the answer, bringing a first-time friend… whatever earns it), and tap the amber count to take one back.
