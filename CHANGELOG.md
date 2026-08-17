@@ -2,6 +2,11 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.26 · Studio glass · 17 August 2026
+
+- The reading scroll is now fully yours mid-flight: slow it down or speed it up WHILE it's rolling with the minus and plus buttons, pause for WhatsApp as before, and restart from the top with one tap. Your speed sticks on that device.
+- The first pass of the new look: a deeper, calmer studio backdrop on the reading view, softer shadows and rounder corners everywhere, smoother motion on every button and link, refined scrollbars… and everything respects reduced-motion settings. More of the redesign lands page by page.
+
 ## v2.25 · The studio keeps up · 17 August 2026
 
 - The game scoreboard now suggests names from the monthly leaderboard as well as your listener log… so a returning player always matches their existing spelling, points land on the right person, and a slip of the keyboard can't quietly create a twin.

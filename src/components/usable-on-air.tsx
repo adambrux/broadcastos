@@ -227,8 +227,30 @@ export function UsableOnAir() {
   function cyclePrompterSpeed() {
     const steps = [0.75, 1, 1.25, 1.5]
     const next = steps[(steps.indexOf(prompterSpeed) + 1) % steps.length] ?? 1
-    setPrompterSpeed(next)
-    try { window.localStorage.setItem("broadcastos-prompter-speed", String(next)) } catch { /* fine */ }
+    applyPrompterSpeed(next)
+  }
+
+  // Speed changes apply INSTANTLY, even mid-scroll… the live control scales
+  // the roll that's already running, and the choice sticks on this device.
+  function applyPrompterSpeed(next: number) {
+    const clamped = Math.min(2, Math.max(0.5, Math.round(next * 4) / 4))
+    if (prompterControl.current && prompterSpeed > 0) {
+      prompterControl.current.speed = (prompterControl.current.speed / prompterSpeed) * clamped
+    }
+    setPrompterSpeed(clamped)
+    try { window.localStorage.setItem("broadcastos-prompter-speed", String(clamped)) } catch { /* fine */ }
+  }
+
+  function nudgePrompterSpeed(delta: number) {
+    applyPrompterSpeed(prompterSpeed + delta)
+  }
+
+  function restartPrompter() {
+    const container = scrollContainerRef.current
+    if (!container) return
+    stopPrompter()
+    container.scrollTo({ top: 0 })
+    window.setTimeout(() => beginScroll(), 80)
   }
 
   function startCountdown() {
@@ -478,7 +500,7 @@ export function UsableOnAir() {
   ]
 
   return (
-    <div ref={scrollContainerRef} className="fixed inset-0 z-[45] overflow-auto bg-[#08090d] text-white">
+    <div ref={scrollContainerRef} className="fixed inset-0 z-[45] overflow-auto bg-[#07080c] bg-[radial-gradient(ellipse_at_top,rgba(96,50,166,0.14),transparent_55%),radial-gradient(ellipse_at_bottom_right,rgba(237,27,152,0.06),transparent_50%)] text-white">
       {transitionCard && (
         <div className="pointer-events-none fixed inset-0 z-[80] grid place-items-center bg-black/85">
           <div className="text-center">
@@ -1091,6 +1113,33 @@ export function UsableOnAir() {
               >
                 <Square className="size-4" />End reading
               </Button>
+              <div className="inline-flex items-center gap-1 rounded-xl border border-white/15 bg-white/5 p-1">
+                <button
+                  type="button"
+                  onClick={() => nudgePrompterSpeed(-0.25)}
+                  aria-label="Scroll slower"
+                  className="grid size-10 cursor-pointer place-items-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <Minus className="size-4" />
+                </button>
+                <span className="min-w-11 text-center font-mono text-sm font-bold text-white">{prompterSpeed}x</span>
+                <button
+                  type="button"
+                  onClick={() => nudgePrompterSpeed(0.25)}
+                  aria-label="Scroll faster"
+                  className="grid size-10 cursor-pointer place-items-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <Plus className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={restartPrompter}
+                  aria-label="Restart reading from the top"
+                  className="grid size-10 cursor-pointer place-items-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <RotateCcw className="size-4" />
+                </button>
+              </div>
               {prompter === "rolling" ? (
                 <Button
                   className="h-14 min-w-56 rounded-2xl bg-emerald-300 px-8 text-base font-semibold text-ink hover:bg-emerald-200"
