@@ -74,12 +74,19 @@ function NavigationLinks({ mobile = false }: { mobile?: boolean }) {
             key={href}
             href={href}
             className={cn(
-              "group flex h-11 items-center gap-3 rounded-xl px-3 text-[14px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-              active && "bg-brand-soft text-brand-indigo shadow-[inset_0_0_0_1px_rgba(42,59,172,.05)]",
+              "group relative flex h-11 items-center gap-3 rounded-xl px-3 text-[14px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+              active && "bg-gradient-to-r from-brand-soft via-brand-soft/70 to-transparent text-brand-indigo shadow-[inset_0_0_0_1px_rgba(42,59,172,.07)]",
               mobile && "h-12"
             )}
           >
-            <Icon className={cn("size-[18px]", active && "text-brand-indigo")} strokeWidth={1.8} />
+            <span
+              aria-hidden="true"
+              className={cn(
+                "absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-brand-indigo to-brand-magenta opacity-0 transition-opacity duration-200",
+                active && "opacity-100"
+              )}
+            />
+            <Icon className={cn("size-[18px] transition-transform duration-200 group-hover:scale-105", active && "text-brand-indigo")} strokeWidth={1.8} />
             <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
               <span>{label}</span>
               {label === "On Air" && <span className="studio-live-dot size-1.5" aria-hidden="true" />}
@@ -196,7 +203,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           A newer BroadcastOS is ready… tap to reload when you have a moment.
         </button>
       )}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[224px] border-r border-border/70 bg-sidebar px-4 py-7 lg:flex lg:flex-col">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[224px] border-r border-border/60 bg-sidebar/85 px-4 py-7 backdrop-blur-xl lg:flex lg:flex-col">
         <div className="px-2">
           <Brand />
           <div className="mt-4">
@@ -228,7 +235,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </DropdownMenu>
       </aside>
 
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/90 px-4 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl lg:hidden">
         <Brand compact />
         <div className="flex items-center gap-2">
           <StudioLivePill />

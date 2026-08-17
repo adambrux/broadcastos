@@ -2,6 +2,11 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.27 · The front door · 17 August 2026
+
+- Phase two of the new look: the sidebar goes softly translucent with a blur, the page you're on gets a proper indicator… a small indigo-to-magenta bar beside its name with a gradient highlight… and icons respond gently as you move around.
+- The sign-in page got the same care: a frosted card floating on the brand's colour washes, friendlier inputs, and error messages in a proper alert box instead of bare red text.
+
 ## v2.26 · Studio glass · 17 August 2026
 
 - The reading scroll is now fully yours mid-flight: slow it down or speed it up WHILE it's rolling with the minus and plus buttons, pause for WhatsApp as before, and restart from the top with one tap. Your speed sticks on that device.
