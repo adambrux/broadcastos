@@ -2,6 +2,11 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.31 · Lights down · 21 August 2026
+
+- Record mode on the Podcast page: one tap in the episode header turns the whole reading surface black with white text, made for recording sessions… and the app remembers your choice on that device.
+- A small reminder now sits under every episode's open: to-camera intros go to autocue@premier.org.uk before the session, so the autocue is ready when the cameras are.
+
 ## v2.30 · Back to back · 21 August 2026
 
 - The Podcast page is now a shelf of episodes: load as many preps as the day needs, open any of them with one tap, and switch between them mid-session… made for back-to-back recording days on the iPad.
