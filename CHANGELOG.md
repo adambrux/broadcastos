@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.30 · Back to back · 21 August 2026
+
+- The Podcast page is now a shelf of episodes: load as many preps as the day needs, open any of them with one tap, and switch between them mid-session… made for back-to-back recording days on the iPad.
+- Every episode keeps its own progress, so question marks ticked in one interview never bleed into another, and removing an episode asks before it goes.
+- Preps with a written close now show it at the bottom in reading size… "The close · read this to finish"… so every episode ends properly instead of trailing off.
+
 ## v2.29 · The podcast chair, tuned · 21 August 2026
 
 - Pasting a prep now reads even messy converts correctly: summary sentences no longer masquerade as section headings, and a spoken open that arrives as one long paragraph is split back into big readable lines.

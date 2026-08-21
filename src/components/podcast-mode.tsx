@@ -1,21 +1,51 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowDown, Check, Mic2, RotateCcw, Trash2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { ArrowDown, ArrowLeft, Check, Mic2, Plus, RotateCcw, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
-  clearPodcastDoc,
-  loadCovered,
-  loadPodcastDoc,
+  addEpisode,
+  loadLibrary,
   parsePodcastNotes,
   questionCount,
-  saveCovered,
-  savePodcastDoc,
+  removeEpisode,
+  updateEpisodeCovered,
   type PodcastCard,
-  type PodcastDoc,
+  type PodcastEpisode,
 } from "@/lib/podcast-notes"
 import { cn } from "@/lib/utils"
+
+function coveredCount(episode: PodcastEpisode) {
+  return episode.doc.sections.reduce(
+    (sum, section) => sum + section.cards.filter((card) => card.kind === "question" && episode.covered[card.id]).length,
+    0
+  )
+}
+
+function savedDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
+  } catch {
+    return ""
+  }
+}
+
+function SpokenBlock({ label, lines }: { label: string; lines: string[] }) {
+  if (!lines.length) return null
+  return (
+    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-indigo">{label}</p>
+      <div className="mt-3 space-y-2">
+        {lines.map((line, index) => (
+          <p key={index} className="text-lg leading-relaxed tracking-[-0.01em]">
+            {line}
+          </p>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 function CardView({
   card,
@@ -89,47 +119,33 @@ function CardView({
 }
 
 export function PodcastModePage() {
-  const [doc, setDoc] = useState<PodcastDoc | null>(null)
-  const [covered, setCovered] = useState<Record<string, boolean>>({})
+  const [library, setLibrary] = useState<PodcastEpisode[] | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState("")
-  const [ready, setReady] = useState(false)
   const cardRefs = useRef(new Map<string, HTMLDivElement | null>())
 
   useEffect(() => {
-    setDoc(loadPodcastDoc())
-    setCovered(loadCovered())
-    setReady(true)
+    setLibrary(loadLibrary())
   }, [])
 
-  const total = useMemo(() => (doc ? questionCount(doc) : 0), [doc])
-  const done = useMemo(
-    () =>
-      doc
-        ? doc.sections.reduce(
-            (sum, section) => sum + section.cards.filter((card) => card.kind === "question" && covered[card.id]).length,
-            0
-          )
-        : 0,
-    [doc, covered]
-  )
+  if (library === null) return null
+
+  const active = activeId ? library.find((episode) => episode.id === activeId) ?? null : null
 
   const registerRef = (id: string, el: HTMLDivElement | null) => {
     cardRefs.current.set(id, el)
   }
 
-  const toggle = (id: string) => {
-    setCovered((prev) => {
-      const next = { ...prev, [id]: !prev[id] }
-      saveCovered(next)
-      return next
-    })
+  const toggle = (episode: PodcastEpisode, cardId: string) => {
+    const covered = { ...episode.covered, [cardId]: !episode.covered[cardId] }
+    setLibrary(updateEpisodeCovered(episode.id, covered))
   }
 
-  const jumpToNext = () => {
-    if (!doc) return
-    for (const section of doc.sections) {
+  const jumpToNext = (episode: PodcastEpisode) => {
+    for (const section of episode.doc.sections) {
       for (const card of section.cards) {
-        if (card.kind === "question" && !covered[card.id]) {
+        if (card.kind === "question" && !episode.covered[card.id]) {
           cardRefs.current.get(card.id)?.scrollIntoView({ behavior: "smooth", block: "center" })
           return
         }
@@ -140,106 +156,132 @@ export function PodcastModePage() {
   const loadDraft = () => {
     const parsed = parsePodcastNotes(draft)
     if (!parsed.sections.length && !parsed.openScript.length) return
-    savePodcastDoc(parsed)
-    saveCovered({})
-    setDoc(parsed)
-    setCovered({})
+    const next = addEpisode(parsed)
+    setLibrary(next)
     setDraft("")
+    setAdding(false)
+    setActiveId(next[0].id)
   }
 
-  const reset = () => {
-    setCovered({})
-    saveCovered({})
-  }
-
-  const remove = () => {
-    clearPodcastDoc()
-    setDoc(null)
-    setCovered({})
-  }
-
-  if (!ready) return null
-
-  if (!doc) {
+  if (active) {
+    const total = questionCount(active.doc)
+    const done = coveredCount(active)
     return (
-      <div className="mx-auto max-w-3xl space-y-6 p-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-[-0.02em]">Podcast</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Paste a podcast prep below and it becomes tappable question cards… tap a question when it&apos;s covered, skip
-            in any order, and the transitions stay in view so every jump still flows.
-          </p>
+      <div className="mx-auto max-w-3xl space-y-8 p-6 pb-24">
+        <div className="sticky top-0 z-10 -mx-6 border-b border-border/60 bg-background/90 px-6 py-3 backdrop-blur">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={() => setActiveId(null)}>
+                <ArrowLeft className="size-3.5" />Episodes
+              </Button>
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-semibold tracking-[-0.02em]">{active.doc.title}</h1>
+                <p className="text-xs text-muted-foreground">
+                  {done} of {total} questions covered
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={() => jumpToNext(active)}>
+                <ArrowDown className="size-3.5" />Next up
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-lg"
+                onClick={() => setLibrary(updateEpisodeCovered(active.id, {}))}
+                aria-label="Clear all covered marks"
+              >
+                <RotateCcw className="size-3.5" />
+              </Button>
+            </div>
+          </div>
         </div>
-        <textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Paste the whole prep document here… headings, numbered questions and transition lines are picked up automatically."
-          className="h-72 w-full rounded-2xl border border-border bg-card p-4 text-sm leading-relaxed shadow-sm outline-none focus:border-brand-indigo/50"
-        />
-        <Button onClick={loadDraft} disabled={!draft.trim()} className="rounded-xl">
-          <Mic2 className="size-4" />Load the podcast
-        </Button>
+
+        <SpokenBlock label="The open · read this to start" lines={active.doc.openScript} />
+
+        {active.doc.sections.map((section) => (
+          <section key={section.id} className="space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{section.title}</h2>
+            {section.cards.map((card) => (
+              <CardView
+                key={card.id}
+                card={card}
+                covered={Boolean(active.covered[card.id])}
+                onToggle={() => toggle(active, card.id)}
+                registerRef={registerRef}
+              />
+            ))}
+          </section>
+        ))}
+
+        <SpokenBlock label="The close · read this to finish" lines={active.doc.closeScript ?? []} />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 p-6 pb-24">
-      <div className="sticky top-0 z-10 -mx-6 border-b border-border/60 bg-background/90 px-6 py-3 backdrop-blur">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold tracking-[-0.02em]">{doc.title}</h1>
-            <p className="text-xs text-muted-foreground">
-              {done} of {total} questions covered
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={jumpToNext}>
-              <ArrowDown className="size-3.5" />Next up
-            </Button>
-            <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={reset} aria-label="Clear all covered marks">
-              <RotateCcw className="size-3.5" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 rounded-lg text-destructive hover:text-destructive"
-              onClick={remove}
-              aria-label="Remove this podcast"
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-          </div>
+    <div className="mx-auto max-w-3xl space-y-6 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">Podcast</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your episodes live here… load as many as the day needs and switch between them mid-session.
+          </p>
         </div>
+        <Button className="rounded-xl" onClick={() => setAdding((value) => !value)}>
+          <Plus className="size-4" />Add episode
+        </Button>
       </div>
 
-      {doc.openScript.length > 0 && (
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-indigo">The open · read this to start</p>
-          <div className="mt-3 space-y-2">
-            {doc.openScript.map((line, index) => (
-              <p key={index} className="text-lg leading-relaxed tracking-[-0.01em]">
-                {line}
-              </p>
-            ))}
-          </div>
-        </section>
+      {(adding || library.length === 0) && (
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Paste the whole prep document here… headings, numbered questions, transitions, the open and the close are picked up automatically."
+            className="h-64 w-full rounded-xl border border-border bg-background p-4 text-sm leading-relaxed outline-none focus:border-brand-indigo/50"
+          />
+          <Button onClick={loadDraft} disabled={!draft.trim()} className="rounded-xl">
+            <Mic2 className="size-4" />Load the episode
+          </Button>
+        </div>
       )}
 
-      {doc.sections.map((section) => (
-        <section key={section.id} className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{section.title}</h2>
-          {section.cards.map((card) => (
-            <CardView
-              key={card.id}
-              card={card}
-              covered={Boolean(covered[card.id])}
-              onToggle={() => toggle(card.id)}
-              registerRef={registerRef}
-            />
-          ))}
-        </section>
-      ))}
+      {library.length > 0 && (
+        <div className="space-y-3">
+          {library.map((episode) => {
+            const total = questionCount(episode.doc)
+            const done = coveredCount(episode)
+            return (
+              <div
+                key={episode.id}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm"
+              >
+                <button type="button" className="min-w-0 flex-1 cursor-pointer text-left" onClick={() => setActiveId(episode.id)}>
+                  <h2 className="truncate text-lg font-semibold tracking-[-0.02em]">{episode.doc.title}</h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {done} of {total} covered · saved {savedDate(episode.savedAt)}
+                  </p>
+                </button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 shrink-0 rounded-lg text-destructive hover:text-destructive"
+                  aria-label={`Remove ${episode.doc.title}`}
+                  onClick={() => {
+                    if (window.confirm(`Remove "${episode.doc.title}" from the shelf?`)) {
+                      setLibrary(removeEpisode(episode.id))
+                    }
+                  }}
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

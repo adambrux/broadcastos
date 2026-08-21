@@ -21,14 +21,24 @@ export type PodcastSection = {
 export type PodcastDoc = {
   title: string
   openScript: string[]
+  closeScript?: string[]
   sections: PodcastSection[]
   importedAt: string
 }
 
+export type PodcastEpisode = {
+  id: string
+  doc: PodcastDoc
+  covered: Record<string, boolean>
+  savedAt: string
+}
+
 const DOC_KEY = "broadcastos-podcast-doc"
 const COVERED_KEY = "broadcastos-podcast-covered"
+const LIBRARY_KEY = "broadcastos-podcast-library"
 
-const SECTION_STARTERS = /^(anchor|arc|the open|the shape|producer notes|before the session|logistics)/i
+const SECTION_STARTERS = /^(anchor|arc|the open|the close|the shape|producer notes|before the session|logistics)/i
+const CLOSE_SECTION = /^the close/i
 const OPEN_SECTION = /^the open/i
 const SKIP_SECTIONS = /^(the shape|producer notes|before the session|logistics)/i
 
@@ -49,9 +59,10 @@ export function parsePodcastNotes(raw: string): PodcastDoc {
     .map((line) => line.replace(/\s+/g, " ").trim())
     .filter(Boolean)
 
-  const doc: PodcastDoc = { title: "Podcast", openScript: [], sections: [], importedAt: new Date().toISOString() }
+  const doc: PodcastDoc = { title: "Podcast", openScript: [], closeScript: [], sections: [], importedAt: new Date().toISOString() }
   let current: PodcastSection | null = null
   let inOpen = false
+  let inClose = false
   let inSkipped = false
   let titleTaken = false
   let cardSeq = 0
@@ -67,22 +78,24 @@ export function parsePodcastNotes(raw: string): PodcastDoc {
 
     if (looksLikeHeader(line)) {
       inOpen = OPEN_SECTION.test(line)
+      inClose = CLOSE_SECTION.test(line)
       inSkipped = SKIP_SECTIONS.test(line)
       current = null
-      if (!inOpen && !inSkipped) {
+      if (!inOpen && !inClose && !inSkipped) {
         current = { id: `section-${doc.sections.length + 1}`, title: line, cards: [] }
         doc.sections.push(current)
       }
       continue
     }
 
-    if (inOpen) {
-      // Pasted converts can flatten the whole open into one paragraph; break it
+    if (inOpen || inClose) {
+      // Pasted converts can flatten a spoken block into one paragraph; break it
       // back into spoken lines so it reads at teleprompter size.
+      const target = inOpen ? doc.openScript : (doc.closeScript as string[])
       if (line.length > 160) {
-        doc.openScript.push(...line.split(/(?<=[.!?\u2026])\s+/).map((part) => part.trim()).filter(Boolean))
+        target.push(...line.split(/(?<=[.!?\u2026])\s+/).map((part) => part.trim()).filter(Boolean))
       } else {
-        doc.openScript.push(line)
+        target.push(line)
       }
       continue
     }
@@ -106,50 +119,58 @@ export function questionCount(doc: PodcastDoc) {
   return doc.sections.reduce((sum, section) => sum + section.cards.filter((card) => card.kind === "question").length, 0)
 }
 
-export function loadPodcastDoc(): PodcastDoc | null {
-  if (typeof window === "undefined") return null
+export function loadLibrary(): PodcastEpisode[] {
+  if (typeof window === "undefined") return []
   try {
-    const raw = window.localStorage.getItem(scopedKey(DOC_KEY))
-    return raw ? (JSON.parse(raw) as PodcastDoc) : null
+    const raw = window.localStorage.getItem(scopedKey(LIBRARY_KEY))
+    if (raw) return JSON.parse(raw) as PodcastEpisode[]
+    // One-time move of the single-episode era into the library shelf.
+    const legacyDoc = window.localStorage.getItem(scopedKey(DOC_KEY))
+    if (legacyDoc) {
+      const doc = JSON.parse(legacyDoc) as PodcastDoc
+      const coveredRaw = window.localStorage.getItem(scopedKey(COVERED_KEY))
+      const episode: PodcastEpisode = {
+        id: `episode-${Date.now()}`,
+        doc,
+        covered: coveredRaw ? (JSON.parse(coveredRaw) as Record<string, boolean>) : {},
+        savedAt: doc.importedAt || new Date().toISOString(),
+      }
+      const library = [episode]
+      window.localStorage.setItem(scopedKey(LIBRARY_KEY), JSON.stringify(library))
+      window.localStorage.removeItem(scopedKey(DOC_KEY))
+      window.localStorage.removeItem(scopedKey(COVERED_KEY))
+      return library
+    }
+    return []
   } catch {
-    return null
+    return []
   }
 }
 
-export function savePodcastDoc(doc: PodcastDoc) {
+function saveLibrary(library: PodcastEpisode[]) {
   if (typeof window === "undefined") return
   try {
-    window.localStorage.setItem(scopedKey(DOC_KEY), JSON.stringify(doc))
+    window.localStorage.setItem(scopedKey(LIBRARY_KEY), JSON.stringify(library))
   } catch {
     // Storage blocked: the session still works, it just won't survive a reload.
   }
 }
 
-export function clearPodcastDoc() {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.removeItem(scopedKey(DOC_KEY))
-    window.localStorage.removeItem(scopedKey(COVERED_KEY))
-  } catch {
-    // Ignore.
-  }
+export function addEpisode(doc: PodcastDoc): PodcastEpisode[] {
+  const episode: PodcastEpisode = { id: `episode-${Date.now()}`, doc, covered: {}, savedAt: new Date().toISOString() }
+  const library = [episode, ...loadLibrary()]
+  saveLibrary(library)
+  return library
 }
 
-export function loadCovered(): Record<string, boolean> {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = window.localStorage.getItem(scopedKey(COVERED_KEY))
-    return raw ? (JSON.parse(raw) as Record<string, boolean>) : {}
-  } catch {
-    return {}
-  }
+export function removeEpisode(id: string): PodcastEpisode[] {
+  const library = loadLibrary().filter((episode) => episode.id !== id)
+  saveLibrary(library)
+  return library
 }
 
-export function saveCovered(covered: Record<string, boolean>) {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.setItem(scopedKey(COVERED_KEY), JSON.stringify(covered))
-  } catch {
-    // Ignore.
-  }
+export function updateEpisodeCovered(id: string, covered: Record<string, boolean>): PodcastEpisode[] {
+  const library = loadLibrary().map((episode) => (episode.id === id ? { ...episode, covered } : episode))
+  saveLibrary(library)
+  return library
 }
