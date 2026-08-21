@@ -2,6 +2,10 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.29 · The podcast chair, tuned · 21 August 2026
+
+- Pasting a prep now reads even messy converts correctly: summary sentences no longer masquerade as section headings, and a spoken open that arrives as one long paragraph is split back into big readable lines.
+
 ## v2.28 · The podcast chair · 21 August 2026
 
 - New Podcast page in the menu: paste a podcast prep document and it becomes big tappable question cards for the iPad. Tap a question when it's covered and it fades out of your way, answer things in any order, and Next up scrolls you to the first question still waiting.

@@ -33,9 +33,11 @@ const OPEN_SECTION = /^the open/i
 const SKIP_SECTIONS = /^(the shape|producer notes|before the session|logistics)/i
 
 function looksLikeHeader(line: string) {
-  if (SECTION_STARTERS.test(line)) return true
+  // Real headers are short; a long line starting with "Anchor one, ..." is a
+  // summary sentence inside a section, not a new section.
+  if (SECTION_STARTERS.test(line) && line.length <= 60) return true
   const letters = line.replace(/[^a-zA-Z]/g, "")
-  if (letters.length < 4 || line.length > 80) return false
+  if (letters.length < 4 || line.length > 60) return false
   const caps = letters.replace(/[^A-Z]/g, "")
   return caps.length / letters.length >= 0.8
 }
@@ -75,7 +77,13 @@ export function parsePodcastNotes(raw: string): PodcastDoc {
     }
 
     if (inOpen) {
-      doc.openScript.push(line)
+      // Pasted converts can flatten the whole open into one paragraph; break it
+      // back into spoken lines so it reads at teleprompter size.
+      if (line.length > 160) {
+        doc.openScript.push(...line.split(/(?<=[.!?\u2026])\s+/).map((part) => part.trim()).filter(Boolean))
+      } else {
+        doc.openScript.push(line)
+      }
       continue
     }
     if (inSkipped || !current) continue
