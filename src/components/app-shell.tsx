@@ -10,6 +10,7 @@ import {
   Flag,
   Gauge,
   Menu,
+  Mic2,
   Newspaper,
   Radio,
   SlidersHorizontal,
@@ -59,6 +60,7 @@ const navigation = [
   { label: "Presenter Hub", href: "/newsroom", icon: Newspaper },
   { label: "Insights", href: "/insights", icon: BarChart3 },
   { label: "Script issues", href: "/issues", icon: Flag },
+  { label: "Podcast", href: "/podcast", icon: Mic2 },
   { label: "On Air", href: "/broadcast", icon: Radio },
 ] as const
 

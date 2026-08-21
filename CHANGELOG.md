@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.28 · The podcast chair · 21 August 2026
+
+- New Podcast page in the menu: paste a podcast prep document and it becomes big tappable question cards for the iPad. Tap a question when it's covered and it fades out of your way, answer things in any order, and Next up scrolls you to the first question still waiting.
+- Transitions from the prep stay pinned between the cards in their own colour, so however you jump around, the next bridge line is always in front of you… and anything marked for you personally shows up flagged "You at the table".
+- The spoken open sits at the top in reading size, your progress is counted in the header, and everything survives closing the tab… it's all saved on the device until you remove it.
+
 ## v2.27 · The front door · 17 August 2026
 
 - Phase two of the new look: the sidebar goes softly translucent with a blur, the page you're on gets a proper indicator… a small indigo-to-magenta bar beside its name with a gradient highlight… and icons respond gently as you move around.
