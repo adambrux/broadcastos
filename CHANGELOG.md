@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.32 · One name, one total · 8 September 2026
+
+- Two spellings of one player can now be folded together: tap "fix name" next to anyone on the monthly board, type the name to keep, and every point they ever scored moves under that one name… today's scoreboard follows along too.
+- Typing a name in the scoreboard always answers you now: players already on today's board show up labelled "on the board", and tapping them lights their row up gold instead of quietly doing nothing.
+- Name suggestions put closest matches first, so the right spelling is the first tap.
+
 ## v2.31 · Lights down · 21 August 2026
 
 - Record mode on the Podcast page: one tap in the episode header turns the whole reading surface black with white text, made for recording sessions… and the app remembers your choice on that device.

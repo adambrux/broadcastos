@@ -117,6 +117,8 @@ type ScoresPayload = {
   showId?: string
   showDate?: string
   players?: { name?: string; points?: number; bonus?: number }[]
+  /** Combine two spellings of the same player into one running total. */
+  merge?: { from?: string; to?: string }
 }
 
 /**
@@ -138,6 +140,51 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => null) as ScoresPayload | null
     const showId = typeof body?.showId === "string" && body.showId ? body.showId : "afternoons"
+
+    // Merging two spellings: their day rows combine date by date, then the old
+    // spelling disappears… one name, one running total, history intact.
+    if (body?.merge) {
+      const fromName = typeof body.merge.from === "string" ? body.merge.from.replace(/\s+/g, " ").trim() : ""
+      const toName = typeof body.merge.to === "string" ? body.merge.to.replace(/\s+/g, " ").trim() : ""
+      if (!fromName || !toName) {
+        return Response.json({ error: "Both names are needed for a merge." }, { status: 400 })
+      }
+      const fromKey = nameKey(fromName)
+      const toKey = nameKey(toName)
+      if (fromKey === toKey) {
+        await sql`
+          UPDATE broadcastos_game_scores SET display_name = ${toName}, updated_at = NOW()
+          WHERE user_id = ${userId} AND show_id = ${showId} AND name_key = ${toKey}
+        `
+        return Response.json({ ok: true, merged: true, status: cloudSaveStatus() })
+      }
+      await sql`
+        UPDATE broadcastos_game_scores AS t
+        SET points = t.points + f.points, bonus = t.bonus + f.bonus, updated_at = NOW()
+        FROM broadcastos_game_scores AS f
+        WHERE t.user_id = ${userId} AND t.show_id = ${showId} AND t.name_key = ${toKey}
+          AND f.user_id = t.user_id AND f.show_id = t.show_id AND f.show_date = t.show_date
+          AND f.name_key = ${fromKey}
+      `
+      await sql`
+        DELETE FROM broadcastos_game_scores AS f
+        USING broadcastos_game_scores AS t
+        WHERE f.user_id = ${userId} AND f.show_id = ${showId} AND f.name_key = ${fromKey}
+          AND t.user_id = f.user_id AND t.show_id = f.show_id AND t.show_date = f.show_date
+          AND t.name_key = ${toKey}
+      `
+      await sql`
+        UPDATE broadcastos_game_scores
+        SET name_key = ${toKey}, display_name = ${toName}, updated_at = NOW()
+        WHERE user_id = ${userId} AND show_id = ${showId} AND name_key = ${fromKey}
+      `
+      await sql`
+        UPDATE broadcastos_game_scores SET display_name = ${toName}, updated_at = NOW()
+        WHERE user_id = ${userId} AND show_id = ${showId} AND name_key = ${toKey}
+      `
+      return Response.json({ ok: true, merged: true, status: cloudSaveStatus() })
+    }
+
     const showDate = typeof body?.showDate === "string" && datePattern.test(body.showDate) ? body.showDate : ""
     if (!showDate) {
       return Response.json({ error: "A show date is needed." }, { status: 400 })

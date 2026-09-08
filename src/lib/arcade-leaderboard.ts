@@ -41,6 +41,17 @@ export async function syncArcadeScores(showDate: string, players: { name: string
   })
 }
 
+/** Fold one spelling of a player into another: points combine, the old spelling goes. */
+export async function mergeArcadeNames(from: string, to: string) {
+  const response = await fetch("/api/game-scores", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ showId: arcadeShowId, merge: { from, to } }),
+  })
+  const data = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null
+  if (!response.ok || !data?.ok) throw new Error(data?.error ?? "The merge could not be saved.")
+}
+
 /** The month's master leaderboard, refetched whenever refreshToken changes. */
 export function useArcadeMonth(month: string, enabled = true, refreshToken = 0) {
   const [data, setData] = useState<ArcadeMonthData | null>(null)

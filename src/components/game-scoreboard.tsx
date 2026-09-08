@@ -6,7 +6,7 @@ import { ChevronDown, Crown, Minus, Plus, RotateCcw, Star, Trophy, X } from "luc
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { arcadeMonthLabel, arcadeShowId, syncArcadeScores, useArcadeMonth } from "@/lib/arcade-leaderboard"
+import { arcadeMonthLabel, arcadeShowId, mergeArcadeNames, syncArcadeScores, useArcadeMonth } from "@/lib/arcade-leaderboard"
 import { cn } from "@/lib/utils"
 import { arcadeAllowed } from "@/lib/user-scope"
 import { scopedKey } from "@/lib/user-scope"
@@ -149,19 +149,53 @@ function GameScoreboardInner({
   // Suggestions pull from the listener log AND the monthly board, so a
   // returning player always matches their existing name… one spelling, one
   // running total, no accidental twins like a lost letter creating a new player.
+  // Players already on today's board still show, labelled, so typing a name
+  // always answers back instead of going silent.
   function suggestPlayers(query: string) {
     const q = query.replace(/\s+/g, " ").trim().toLowerCase()
     if (!q) return []
     const pool = [...suggest(query), ...(monthly.data?.standings ?? []).map((standing) => standing.name)]
-    const merged: string[] = []
-    for (const name of pool) {
+    const merged: { name: string; onBoard: boolean }[] = []
+    for (const name of [...state.players.map((player) => player.name), ...pool]) {
       if (!name.toLowerCase().includes(q)) continue
-      if (merged.some((seen) => seen.toLowerCase() === name.toLowerCase())) continue
-      if (state.players.some((player) => player.name.toLowerCase() === name.toLowerCase())) continue
-      merged.push(name)
+      if (merged.some((seen) => seen.name.toLowerCase() === name.toLowerCase())) continue
+      const onBoard = state.players.some((player) => player.name.toLowerCase() === name.toLowerCase())
+      merged.push({ name, onBoard })
       if (merged.length >= 6) break
     }
+    merged.sort((a, b) => Number(b.name.toLowerCase().startsWith(q)) - Number(a.name.toLowerCase().startsWith(q)))
     return merged
+  }
+
+  // A flash of gold on the row when a typed name was already on the board.
+  const [flashName, setFlashName] = useState("")
+  useEffect(() => {
+    if (!flashName) return
+    const timer = window.setTimeout(() => setFlashName(""), 1600)
+    return () => window.clearTimeout(timer)
+  }, [flashName])
+
+  // One tap fixes a spelling twin: today's board rows fold together locally,
+  // and the cloud combines every past day under the kept name.
+  async function mergeStanding(fromName: string) {
+    const toName = window.prompt(`Fold "${fromName}" into which name? All their points move over.`)?.replace(/\s+/g, " ").trim()
+    if (!toName || toName.toLowerCase() === fromName.toLowerCase()) return
+    try {
+      await mergeArcadeNames(fromName, toName)
+      const source = state.players.find((player) => player.name.toLowerCase() === fromName.toLowerCase())
+      if (source) {
+        const target = state.players.find((player) => player.name.toLowerCase() === toName.toLowerCase())
+        const rest = state.players.filter((player) => player !== source && player !== target)
+        const marks = target
+          ? target.marks.map((mark, index) => (mark === "" ? source.marks[index] ?? "" : mark))
+          : source.marks
+        const bonus = bonusOf(source) + (target ? bonusOf(target) : 0)
+        save({ ...state, players: [...rest, { name: toName, marks, bonus }] })
+      }
+      setMonthRefresh((value) => value + 1)
+    } catch {
+      window.alert("That merge could not be saved… try again in a moment.")
+    }
   }
 
   const ranked = [...state.players].sort((a, b) => score(b) - score(a))
@@ -216,14 +250,22 @@ function GameScoreboardInner({
             </div>
             {suggestPlayers(nameInput).length > 0 && (
               <div className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-xl border border-white/15 bg-[#14151d] shadow-2xl">
-                {suggestPlayers(nameInput).map((name) => (
+                {suggestPlayers(nameInput).map((entry) => (
                   <button
-                    key={name}
+                    key={entry.name}
                     type="button"
-                    onClick={() => addPlayer(name)}
-                    className="flex min-h-10 w-full items-center px-3 text-left text-sm font-semibold transition-colors hover:bg-white/10"
+                    onClick={() => {
+                      if (entry.onBoard) {
+                        setFlashName(entry.name)
+                        setNameInput("")
+                      } else {
+                        addPlayer(entry.name)
+                      }
+                    }}
+                    className="flex min-h-10 w-full items-center justify-between gap-2 px-3 text-left text-sm font-semibold transition-colors hover:bg-white/10"
                   >
-                    {name}
+                    <span className="truncate">{entry.name}</span>
+                    {entry.onBoard && <span className="shrink-0 rounded-md bg-amber-300/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-200">on the board</span>}
                   </button>
                 ))}
               </div>
@@ -234,8 +276,9 @@ function GameScoreboardInner({
             <div className="space-y-1.5">
               {ranked.map((player, index) => (
                 <div key={player.name} className={cn(
-                  "rounded-xl border border-white/10 bg-black/20 p-2",
-                  winners.some((winner) => winner.name === player.name) && "border-amber-300/40 bg-amber-300/[0.07]"
+                  "rounded-xl border border-white/10 bg-black/20 p-2 transition-colors",
+                  winners.some((winner) => winner.name === player.name) && "border-amber-300/40 bg-amber-300/[0.07]",
+                  flashName === player.name && "border-amber-300 bg-amber-300/[0.18]"
                 )}>
                   <div className="flex items-center gap-2">
                     <span className={cn(
@@ -319,6 +362,15 @@ function GameScoreboardInner({
                       index === 0 ? "bg-amber-300 text-ink" : "bg-white/10 text-white/55"
                     )}>{index + 1}</span>
                     <p className="min-w-0 flex-1 truncate text-xs font-semibold">{standing.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => mergeStanding(standing.name)}
+                      aria-label={`Fold ${standing.name} into another name`}
+                      title="Two spellings of one person? Fold this name into the right one."
+                      className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-white/25 hover:bg-white/10 hover:text-white"
+                    >
+                      fix name
+                    </button>
                     <span className="text-[10px] text-white/35">{standing.daysPlayed} day{standing.daysPlayed === 1 ? "" : "s"}</span>
                     {(standing.bonusPoints ?? 0) > 0 && (
                       <span className="font-mono text-[10px] font-bold text-amber-200/60">+{standing.bonusPoints}★</span>
