@@ -119,6 +119,8 @@ type ScoresPayload = {
   players?: { name?: string; points?: number; bonus?: number }[]
   /** Combine two spellings of the same player into one running total. */
   merge?: { from?: string; to?: string }
+  /** Hand-set a player's month total: past day rows absorb the difference. */
+  adjust?: { name?: string; month?: string; monthTotal?: number; excludeDate?: string }
 }
 
 /**
@@ -183,6 +185,55 @@ export async function POST(request: Request) {
         WHERE user_id = ${userId} AND show_id = ${showId} AND name_key = ${toKey}
       `
       return Response.json({ ok: true, merged: true, status: cloudSaveStatus() })
+    }
+
+    // Hand-editing a month total: the difference is folded into that player's
+    // past day rows (today's row is left alone so the live board stays the
+    // truth for today). Game points only… stars are untouched.
+    if (body?.adjust) {
+      const name = typeof body.adjust.name === "string" ? body.adjust.name.replace(/\s+/g, " ").trim() : ""
+      const month = typeof body.adjust.month === "string" && monthPattern.test(body.adjust.month) ? body.adjust.month : ukMonth()
+      const excludeDate = typeof body.adjust.excludeDate === "string" && datePattern.test(body.adjust.excludeDate) ? body.adjust.excludeDate : ""
+      const monthTotal = Math.max(0, Math.min(999, Math.round(Number(body.adjust.monthTotal))))
+      if (!name || !Number.isFinite(monthTotal)) {
+        return Response.json({ error: "A name and a total are needed." }, { status: 400 })
+      }
+      const key = nameKey(name)
+      const rows = await sql`
+        SELECT id, show_date, points FROM broadcastos_game_scores
+        WHERE user_id = ${userId} AND show_id = ${showId} AND name_key = ${key} AND show_date LIKE ${`${month}-%`}
+        ORDER BY show_date DESC
+      ` as { id: string; show_date: string; points: number }[]
+      const current = rows.reduce((sum, row) => sum + row.points, 0)
+      let delta = monthTotal - current
+      for (const row of rows) {
+        if (delta === 0) break
+        if (row.show_date === excludeDate) continue
+        const next = Math.max(0, Math.min(99, row.points + delta))
+        delta -= next - row.points
+        if (next !== row.points) {
+          await sql`UPDATE broadcastos_game_scores SET points = ${next}, updated_at = NOW() WHERE id = ${row.id}`
+        }
+      }
+      if (delta > 0) {
+        // More points than the existing days can hold: give them their own day.
+        const used = new Set(rows.map((row) => row.show_date))
+        for (let day = 28; day >= 1 && delta > 0; day--) {
+          const candidate = `${month}-${String(day).padStart(2, "0")}`
+          if (candidate === excludeDate || used.has(candidate)) continue
+          const chunk = Math.min(99, delta)
+          await sql`
+            INSERT INTO broadcastos_game_scores (id, user_id, name_key, display_name, show_id, show_date, points, bonus)
+            VALUES (${crypto.randomUUID()}, ${userId}, ${key}, ${name}, ${showId}, ${candidate}, ${chunk}, 0)
+          `
+          delta -= chunk
+        }
+      }
+      const finalRows = await sql`
+        SELECT COALESCE(SUM(points), 0)::int AS total FROM broadcastos_game_scores
+        WHERE user_id = ${userId} AND show_id = ${showId} AND name_key = ${key} AND show_date LIKE ${`${month}-%`}
+      ` as { total: number }[]
+      return Response.json({ ok: true, adjusted: true, total: finalRows.at(0)?.total ?? monthTotal, unapplied: delta, status: cloudSaveStatus() })
     }
 
     const showDate = typeof body?.showDate === "string" && datePattern.test(body.showDate) ? body.showDate : ""

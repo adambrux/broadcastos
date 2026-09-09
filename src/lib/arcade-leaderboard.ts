@@ -52,6 +52,18 @@ export async function mergeArcadeNames(from: string, to: string) {
   if (!response.ok || !data?.ok) throw new Error(data?.error ?? "The merge could not be saved.")
 }
 
+/** Hand-set a player's month total (game points only)… past days absorb the change. */
+export async function adjustArcadePoints(name: string, month: string, monthTotal: number, excludeDate: string) {
+  const response = await fetch("/api/game-scores", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ showId: arcadeShowId, adjust: { name, month, monthTotal, excludeDate } }),
+  })
+  const data = await response.json().catch(() => null) as { ok?: boolean; total?: number; unapplied?: number; error?: string } | null
+  if (!response.ok || !data?.ok) throw new Error(data?.error ?? "The change could not be saved.")
+  return { total: data.total ?? monthTotal, unapplied: data.unapplied ?? 0 }
+}
+
 /** The month's master leaderboard, refetched whenever refreshToken changes. */
 export function useArcadeMonth(month: string, enabled = true, refreshToken = 0) {
   const [data, setData] = useState<ArcadeMonthData | null>(null)

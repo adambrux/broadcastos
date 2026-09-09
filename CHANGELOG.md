@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.33 · Hold still · 9 September 2026
+
+- The scoreboard holds still while you mark answers: names stay where you added them, the little number badge always shows each player's real position, and a new Reorder button re-sorts the list only when you press it.
+- "Fix points" now sits next to every name on the monthly board: type the total a player should be on and their past days absorb the difference… stars stay untouched, and today's live board is never overwritten.
+- "Fix name" also works as a plain rename: type a fresh spelling and the player moves under it, points and all.
+
 ## v2.32 · One name, one total · 8 September 2026
 
 - Two spellings of one player can now be folded together: tap "fix name" next to anyone on the monthly board, type the name to keep, and every point they ever scored moves under that one name… today's scoreboard follows along too.

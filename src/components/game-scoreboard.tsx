@@ -6,7 +6,7 @@ import { ChevronDown, Crown, Minus, Plus, RotateCcw, Star, Trophy, X } from "luc
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { arcadeMonthLabel, arcadeShowId, mergeArcadeNames, syncArcadeScores, useArcadeMonth } from "@/lib/arcade-leaderboard"
+import { adjustArcadePoints, arcadeMonthLabel, arcadeShowId, mergeArcadeNames, syncArcadeScores, useArcadeMonth } from "@/lib/arcade-leaderboard"
 import { cn } from "@/lib/utils"
 import { arcadeAllowed } from "@/lib/user-scope"
 import { scopedKey } from "@/lib/user-scope"
@@ -175,6 +175,28 @@ function GameScoreboardInner({
     return () => window.clearTimeout(timer)
   }, [flashName])
 
+  // Hand-set a month total: type the number it SHOULD be, past days absorb
+  // the difference, today's live board stays untouched.
+  async function editStandingPoints(name: string, currentPoints: number, bonusPoints: number) {
+    const gamePoints = currentPoints - bonusPoints
+    const answer = window.prompt(`New month total for ${name}? Game points only… they're on ${gamePoints} right now (stars stay as they are).`, String(gamePoints))
+    if (answer === null) return
+    const target = Math.round(Number(answer))
+    if (!Number.isFinite(target) || target < 0 || String(target) !== answer.trim()) {
+      window.alert("Whole numbers only… nothing was changed.")
+      return
+    }
+    try {
+      const result = await adjustArcadePoints(name, month, target, showDate)
+      if (result.unapplied !== 0) {
+        window.alert(`Saved as far as possible… ${name} is on ${result.total}. The rest sits in today's board, fix today's marks to move it.`)
+      }
+      setMonthRefresh((value) => value + 1)
+    } catch {
+      window.alert("That change could not be saved… try again in a moment.")
+    }
+  }
+
   // One tap fixes a spelling twin: today's board rows fold together locally,
   // and the cloud combines every past day under the kept name.
   async function mergeStanding(fromName: string) {
@@ -198,9 +220,20 @@ function GameScoreboardInner({
     }
   }
 
-  const ranked = [...state.players].sort((a, b) => score(b) - score(a))
-  const topScore = ranked.length ? score(ranked[0]) : 0
-  const winners = ranked.filter((player) => score(player) === topScore && topScore > 0)
+  // The list holds still while marks go in… names stay where they were added,
+  // the little number badge always tells the truth about the real rank, and
+  // the Reorder button re-sorts only when the presenter asks.
+  const ranked = state.players
+  const topScore = state.players.reduce((top, player) => Math.max(top, score(player)), 0)
+  const winners = state.players.filter((player) => score(player) === topScore && topScore > 0)
+
+  function rankOf(player: Player) {
+    return 1 + state.players.filter((other) => score(other) > score(player)).length
+  }
+
+  function reorder() {
+    save({ ...state, players: [...state.players].sort((a, b) => score(b) - score(a)) })
+  }
 
   return (
     <div className="rounded-[22px] border border-white/10 bg-white/[0.045] p-5">
@@ -228,11 +261,18 @@ function GameScoreboardInner({
               <span className="text-xs font-semibold text-white/70">{state.questions} question{state.questions === 1 ? "" : "s"}</span>
               <button type="button" onClick={() => setQuestions(state.questions + 1)} aria-label="More questions" className="grid size-8 place-items-center rounded-lg text-white/45 hover:bg-white/10 hover:text-white"><Plus className="size-3.5" /></button>
             </div>
-            {state.players.length > 0 && (
-              <button type="button" onClick={reset} className="inline-flex min-h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-white/35 hover:bg-white/10 hover:text-white">
-                <RotateCcw className="size-3" />Clear
-              </button>
-            )}
+            <div className="flex items-center gap-1">
+              {state.players.length > 1 && (
+                <button type="button" onClick={reorder} className="inline-flex min-h-8 items-center gap-1 rounded-lg bg-white/10 px-2.5 text-[10px] font-semibold text-white/70 hover:bg-white/20 hover:text-white">
+                  <Trophy className="size-3" />Reorder
+                </button>
+              )}
+              {state.players.length > 0 && (
+                <button type="button" onClick={reset} className="inline-flex min-h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-white/35 hover:bg-white/10 hover:text-white">
+                  <RotateCcw className="size-3" />Clear
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="relative">
@@ -274,7 +314,7 @@ function GameScoreboardInner({
 
           {ranked.length > 0 ? (
             <div className="space-y-1.5">
-              {ranked.map((player, index) => (
+              {ranked.map((player) => (
                 <div key={player.name} className={cn(
                   "rounded-xl border border-white/10 bg-black/20 p-2 transition-colors",
                   winners.some((winner) => winner.name === player.name) && "border-amber-300/40 bg-amber-300/[0.07]",
@@ -283,8 +323,8 @@ function GameScoreboardInner({
                   <div className="flex items-center gap-2">
                     <span className={cn(
                       "grid size-6 shrink-0 place-items-center rounded-md font-mono text-[10px] font-bold",
-                      index === 0 && score(player) > 0 ? "bg-amber-300 text-ink" : "bg-white/10 text-white/60"
-                    )}>{index + 1}</span>
+                      rankOf(player) === 1 && score(player) > 0 ? "bg-amber-300 text-ink" : "bg-white/10 text-white/60"
+                    )}>{rankOf(player)}</span>
                     <p className="min-w-0 flex-1 truncate text-sm font-semibold">{player.name}</p>
                     {bonusOf(player) > 0 && (
                       <button type="button" onClick={() => takeStar(player.name)} aria-label={`Take one Extra Mile star from ${player.name}`} className="rounded-md bg-amber-300/15 px-1.5 py-1 font-mono text-[10px] font-bold text-amber-200 hover:bg-amber-300/25">
@@ -366,10 +406,19 @@ function GameScoreboardInner({
                       type="button"
                       onClick={() => mergeStanding(standing.name)}
                       aria-label={`Fold ${standing.name} into another name`}
-                      title="Two spellings of one person? Fold this name into the right one."
+                      title="Two spellings of one person? Fold this name into the right one… or type a fresh spelling to rename them."
                       className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-white/25 hover:bg-white/10 hover:text-white"
                     >
                       fix name
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editStandingPoints(standing.name, standing.points, standing.bonusPoints ?? 0)}
+                      aria-label={`Hand-set the month total for ${standing.name}`}
+                      title="Type the month total this player SHOULD be on."
+                      className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-white/25 hover:bg-white/10 hover:text-white"
+                    >
+                      fix points
                     </button>
                     <span className="text-[10px] text-white/35">{standing.daysPlayed} day{standing.daysPlayed === 1 ? "" : "s"}</span>
                     {(standing.bonusPoints ?? 0) > 0 && (
