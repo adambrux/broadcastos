@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.34 · While you wait · 9 September 2026
+
+- On Air now shows the whole show at a glance: a row of chips, one per link… ticked and dimmed when done, ringed when it's the one on screen, green when it's safe to record early. Tap any chip to jump straight to that link.
+- Links marked EARLY in their title are the ones with nothing time-sensitive and no listener replies… perfect for pre-record sessions. A green "While you wait" button always points at the next one, so the waiting time between as-live links never goes to waste.
+- The counter keeps the running score: how many links are done, how many to go.
+
 ## v2.33 · Hold still · 9 September 2026
 
 - The scoreboard holds still while you mark answers: names stay where you added them, the little number badge always shows each player's real position, and a new Reorder button re-sorts the list only when you press it.

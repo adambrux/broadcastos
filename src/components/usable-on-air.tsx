@@ -14,6 +14,7 @@ import {
   LockKeyhole,
   HandHeart,
   MessageCircle,
+  Mic,
   Minus,
   Pencil,
   Play,
@@ -616,6 +617,60 @@ export function UsableOnAir() {
       </header>
 
       <main className="relative mx-auto max-w-[1500px] space-y-4 px-5 pb-32 pt-4 sm:px-8">
+        {/* The show at a glance: every link as a chip… done, current, still to do.
+            Links whose title carries EARLY are safe to record out of order, and
+            the rail points at the next one while the presenter is waiting. */}
+        {workspace.items.length > 1 && (() => {
+          const isEarly = (title: string) => /\bEARLY\b/.test(title)
+          const doneCount = workspace.items.filter((item) => item.done).length
+          const nextEarlyIndex = workspace.items.findIndex((item, index) => !item.done && index !== activeIndex && isEarly(item.title))
+          const nextEarly = nextEarlyIndex >= 0 ? workspace.items[nextEarlyIndex] : null
+          let hourLink = 0
+          let lastHour: string | number | undefined
+          return (
+            <section className="rounded-[20px] border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                  {doneCount} of {workspace.items.length} done · {workspace.items.length - doneCount} to go
+                </p>
+                {nextEarly && (
+                  <button
+                    type="button"
+                    onClick={() => moveToItem(nextEarlyIndex)}
+                    className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-emerald-400/15 px-2.5 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-400/25"
+                  >
+                    <Mic className="size-3" />While you wait: {nextEarly.title.replace(/\s*·?\s*EARLY\s*·?\s*/i, " ").trim()}
+                  </button>
+                )}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-1">
+                {workspace.items.map((item, index) => {
+                  if (item.hour !== lastHour) { lastHour = item.hour; hourLink = 0 }
+                  hourLink += 1
+                  const early = isEarly(item.title)
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => moveToItem(index)}
+                      title={`${item.title}${item.done ? " · done" : early ? " · safe to record early" : ""}`}
+                      aria-label={`Link ${hourLink}: ${item.title}${item.done ? ", done" : ""}`}
+                      className={cn(
+                        "grid h-7 min-w-7 place-items-center rounded-md px-1 font-mono text-[10px] font-bold transition-colors",
+                        index === activeIndex && "ring-2 ring-white/70",
+                        item.done && "bg-white/[0.06] text-white/25",
+                        !item.done && early && "bg-emerald-400/20 text-emerald-200",
+                        !item.done && !early && "bg-white/10 text-white/60",
+                      )}
+                    >
+                      {item.done ? <Check className="size-3" /> : hourLink}
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          )
+        })()}
         {isLastItem && (
           <section className={cn(
             "rounded-[24px] border border-amber-300/30 bg-amber-300/[0.12] p-5",
