@@ -181,7 +181,9 @@ function inferShowId(showName?: string): StudioShowId | undefined {
   const normalized = clean(showName).toLowerCase()
   if (normalized.includes("afternoons")) return "afternoons"
   if (normalized.includes("sundays")) return "sundays"
+  // "Saturday Breakfast" must win before the generic breakfast check below.
   if (normalized.includes("saturday")) return "saturday"
+  if (normalized.includes("breakfast")) return "gospel-breakfast"
   return undefined
 }
 
@@ -311,7 +313,10 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
       return
     }
 
-    if (linkSections.length !== 6) {
+    // Six links per hour is Adam's own show format (the six-link law). Cover
+    // shows like Gospel Breakfast follow the host producer's clock, so their
+    // hour counts vary and are never worth a warning.
+    if (linkSections.length !== 6 && (showId === "afternoons" || showId === "sundays" || showId === undefined)) {
       warnings.push(`Hour ${hourNumber} should contain exactly six links. BroadcastOS found ${linkSections.length}.`)
     }
 

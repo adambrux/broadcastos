@@ -40,6 +40,7 @@ function normaliseWorkspace(value: unknown): SavedShowWorkspace {
 function showName(showId: unknown) {
   if (showId === "sundays") return "Sundays with Adam"
   if (showId === "saturday") return "Saturday Breakfast"
+  if (showId === "gospel-breakfast") return "Gospel Breakfast"
   return "Afternoons with Adam"
 }
 

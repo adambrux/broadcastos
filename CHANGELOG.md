@@ -2,6 +2,11 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.35 · The breakfast chair · 11 September 2026
+
+- Gospel Breakfast is now a show in its own right: pick it from the show list, import a breakfast plan straight into its own workspace, and cover mornings without borrowing another show's home. Plans whose Show line says Gospel Breakfast are detected automatically (Saturday Breakfast still maps to Saturday).
+- The importer stops warning about link counts on cover shows: six links an hour is the law for Afternoons and Sundays, but a breakfast plan follows the host producer's clock, so its hours can be any size without a telling-off.
+
 ## v2.34 · While you wait · 9 September 2026
 
 - On Air now shows the whole show at a glance: a row of chips, one per link… ticked and dimmed when done, ringed when it's the one on screen, green when it's safe to record early. Tap any chip to jump straight to that link.

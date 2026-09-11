@@ -5,7 +5,7 @@ import { useSyncExternalStore } from "react"
 import { validateLinkFramework, type LinkFrameworkValues } from "@/lib/link-framework"
 import { presenterShowName, scopedKey } from "@/lib/user-scope"
 
-export type StudioShowId = "sundays" | "afternoons" | "saturday"
+export type StudioShowId = "sundays" | "afternoons" | "saturday" | "gospel-breakfast"
 export type StudioMode = "in-studio" | "remote"
 
 export type StudioItem = {
@@ -65,6 +65,7 @@ const baseStudioShows = {
   sundays: { name: "Sundays with Adam", schedule: "Sunday · 09:00–12:00" },
   afternoons: { name: "Afternoons with Adam", schedule: "Weekdays · 13:00–16:00" },
   saturday: { name: "Saturday Breakfast", schedule: "Saturday · 07:00–10:00" },
+  "gospel-breakfast": { name: "Gospel Breakfast", schedule: "Weekdays · 07:00–10:00 · cover" },
 } as const
 
 type StudioShowInfo = { name: string; schedule: string }
@@ -80,6 +81,7 @@ export const studioShows: Record<StudioShowId, StudioShowInfo> = {
   get sundays() { return showFor("sundays") },
   get afternoons() { return showFor("afternoons") },
   get saturday() { return showFor("saturday") },
+  get "gospel-breakfast"() { return showFor("gospel-breakfast") },
 }
 
 const makeItem = (
@@ -469,6 +471,26 @@ export const studioTemplates: Record<StudioShowId, StudioItem[]> = {
       cta: "Stay with Premier Gospel for what’s next.",
       tease: "More music and encouragement continues next on Premier Gospel.",
       stationRequirement: "Second time check · Second station ID · Presenter ID · handover",
+    }),
+  ],
+  "gospel-breakfast": [
+    makeItem("gb-welcome", "07:02", "Breakfast welcome", "Link", "Welcome listeners into the morning and preview the show.", "02:00", {
+      hour: "Hour 1",
+      featureId: "Breakfast Welcome",
+      context: "Good morning, and welcome to Gospel Breakfast on Premier Gospel.",
+      script: "Set up the morning: who you are, what today holds, and the first thing listeners can join in with.",
+      stationRequirement: "Time check · Station ID · Presenter ID",
+    }),
+    makeItem("gb-weather", "07:05", "Weather", "Link", "Read the morning weather.", "01:00", {
+      hour: "Hour 1",
+      featureId: "Weather",
+      script: "Today's forecast, as supplied by the breakfast production team.",
+    }),
+    makeItem("gb-handover", "09:52", "Final link and handover", "Link", "Close the show and hand over to the next presenter.", "02:00", {
+      hour: "Hour 3",
+      featureId: "Handover",
+      script: "Thank the family for the morning and hand over cleanly to the ten o'clock show.",
+      stationRequirement: "Time check · Station ID · handover",
     }),
   ],
 }
