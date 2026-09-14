@@ -21,6 +21,7 @@ import { requireUser } from "@/lib/auth-db"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+export const maxDuration = 60
 
 type StructuredLinerPayload = {
   title?: string

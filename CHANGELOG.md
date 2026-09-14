@@ -2,6 +2,13 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.37 · Straight away · 14 September 2026
+
+- Save online now replies the moment the show row is written. The Presenter Hub archive (script copy and liner read counts) runs in the background after the reply, so a slow archive on a cold start can no longer make a successful save look like a failure or a delay.
+- The database schema check runs once per warm server instead of on every save, taking whole seconds off a cold-start save.
+- Both save routes are allowed up to sixty seconds instead of the default ten, so a big three-hour plan never trips the limit.
+- Saved Shows keep themselves current: the list refreshes when the tab comes back to the front and every half minute while it is showing, so a show saved on the laptop appears on the studio iPad without pressing Refresh.
+
 ## v2.36 · Saved regardless · 14 September 2026
 
 - Save online now saves the show first and treats the Presenter Hub archive as a separate, best-effort step. If the archive step fails, the show is still saved and the message says exactly what went wrong instead of reporting a failed save.

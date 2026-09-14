@@ -173,21 +173,42 @@ export function UsableProducerDesk() {
     const storedKey = window.localStorage.getItem(cloudKeyStorageKey) ?? ""
     setCloudKey(storedKey)
 
-    async function loadInitialCloudSessions() {
+    let cancelled = false
+    async function loadCloudSessionsQuietly(initial = false) {
       try {
         const response = await fetch("/api/show-sessions", {
           cache: "no-store",
           headers: storedKey ? { "x-broadcastos-cloud-key": storedKey } : undefined,
         })
         const data = await response.json().catch(() => null)
+        if (cancelled) return
         if (data?.status) setCloudStatus(data.status)
         if (response.ok && Array.isArray(data?.sessions)) setCloudSessions(data.sessions)
       } catch {
-        setCloudMessage("Cloud save is not reachable yet. Local saving still works.")
+        if (initial && !cancelled) setCloudMessage("Cloud save is not reachable yet. Local saving still works.")
       }
     }
 
-    void loadInitialCloudSessions()
+    void loadCloudSessionsQuietly(true)
+
+    // Saved Shows keep themselves current: a show saved from the other machine
+    // appears here when this tab comes back to the front, and every half minute
+    // while it stays there. No button press needed in the studio.
+    function onVisible() {
+      if (document.visibilityState === "visible") void loadCloudSessionsQuietly()
+    }
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadCloudSessionsQuietly()
+    }, 30000)
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("focus", onVisible)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", onVisible)
+    }
   }, [])
 
   function cloudHeaders(key = cloudKey) {

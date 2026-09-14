@@ -8,6 +8,7 @@ import {
   type SavedShowWorkspace,
 } from "@/lib/cloud-save-db"
 import { requireUser } from "@/lib/auth-db"
+import { after } from "next/server"
 import {
   extractLinerLinksFromShowItems,
   friendlyImportTitle,
@@ -17,6 +18,8 @@ import {
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+// Saving a full show plus its Presenter Hub archive must never trip the default function limit.
+export const maxDuration = 60
 
 type SavedShowSessionSaveRow = {
   id: string
@@ -170,121 +173,122 @@ export async function POST(request: Request) {
     )
   }
 
-  // The show is safe from here. Archiving into the Presenter Hub is best-effort:
-  // a failure there is reported back, never allowed to undo the save above.
-  let archiveWarning: string | null = null
-  try {
-    const showDisplayName = auth.user.role !== "owner" && auth.user.showName ? auth.user.showName : showName(showId)
-    const weekStart = weekStartFromDate(showDate)
-    const showScriptContent = serialiseShowPlanForPresenterHub(workspace)
-    const presenterImportId = `show-session-${id}`
+  // The show is safe from here. The Presenter Hub archive (script copy + liner
+  // read counts) runs AFTER the reply is sent, so Save online answers as soon as
+  // the row is written and a slow archive can never look like a failed save.
+  after(async () => {
+    try {
+        const showDisplayName = auth.user.role !== "owner" && auth.user.showName ? auth.user.showName : showName(showId)
+        const weekStart = weekStartFromDate(showDate)
+        const showScriptContent = serialiseShowPlanForPresenterHub(workspace)
+        const presenterImportId = `show-session-${id}`
 
-    if (showScriptContent.trim()) {
-      const importTitle = friendlyImportTitle("show-script", showDisplayName, weekStart)
-
-      await sql`
-        INSERT INTO broadcastos_presenter_imports (id, user_id, title, kind, source_label, week_start, show_name, original_filename, content, created_at)
-        VALUES (${presenterImportId}, ${userId}, ${importTitle}, ${"show-script"}, ${"Show script"}, ${weekStart}, ${showDisplayName}, ${null}, ${showScriptContent}, ${new Date().toISOString()})
-        ON CONFLICT (id) DO UPDATE SET
-          title = EXCLUDED.title,
-          kind = EXCLUDED.kind,
-          source_label = EXCLUDED.source_label,
-          week_start = EXCLUDED.week_start,
-          show_name = EXCLUDED.show_name,
-          content = EXCLUDED.content
-      `
-
-      // Only structurally marked liner links are archived… never keyword guesses.
-      const extracted = extractLinerLinksFromShowItems(Array.isArray(workspace.items) ? workspace.items : [])
-
-      const existingRows = await sql`
-        SELECT id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at
-        FROM broadcastos_liner_archive
-        WHERE week_start = ${weekStart} AND user_id = ${userId}
-      ` as PresenterHubLinerRow[]
-
-      const existingLiners = existingRows.map((row) => ({
-        id: row.id,
-        title: row.title,
-        script: row.script,
-        showsUsed: parseShowsUsed(row.shows_used),
-        usageCount: row.usage_count,
-        firstUsed: row.first_used,
-        lastUsed: row.last_used,
-      }))
-
-      for (const liner of extracted) {
-        const linerTitle = normaliseForMatch(liner.title)
-        const linerScript = normaliseForMatch(liner.script)
-        const existing = existingLiners.find((item) => {
-          const title = normaliseForMatch(item.title)
-          const script = normaliseForMatch(item.script)
-          return title === linerTitle
-            || (title.length > 12 && linerScript.includes(title))
-            || (linerTitle.length > 12 && script.includes(linerTitle))
-            || (linerScript.length > 24 && script.length > 24 && (linerScript.includes(script) || script.includes(linerScript)))
-        })
-
-        if (existing) {
-          // One read per show day: saving the same show twice never double-counts.
-          const alreadyCountedToday = existing.lastUsed === showDate
-          const usageCount = alreadyCountedToday ? existing.usageCount : existing.usageCount + 1
-          const showsUsed = mergeShows(existing.showsUsed, [showDisplayName])
+        if (showScriptContent.trim()) {
+          const importTitle = friendlyImportTitle("show-script", showDisplayName, weekStart)
 
           await sql`
-            UPDATE broadcastos_liner_archive
-            SET
-              shows_used = ${JSON.stringify(showsUsed)}::jsonb,
-              usage_count = ${usageCount},
-              first_used = COALESCE(first_used, ${showDate}),
-              last_used = ${showDate},
-              status = 'Active'
-            WHERE id = ${existing.id} AND user_id = ${userId}
-          `
-        } else {
-          const newLinerId = crypto.randomUUID()
-          await sql`
-            INSERT INTO broadcastos_liner_archive (id, user_id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
-            VALUES (
-              ${newLinerId},
-              ${userId},
-              ${liner.title},
-              ${liner.script},
-              ${weekStart},
-              ${presenterImportId},
-              ${JSON.stringify([showDisplayName])}::jsonb,
-              1,
-              ${showDate},
-              ${showDate},
-              'Active',
-              ${new Date().toISOString()}
-            )
+            INSERT INTO broadcastos_presenter_imports (id, user_id, title, kind, source_label, week_start, show_name, original_filename, content, created_at)
+            VALUES (${presenterImportId}, ${userId}, ${importTitle}, ${"show-script"}, ${"Show script"}, ${weekStart}, ${showDisplayName}, ${null}, ${showScriptContent}, ${new Date().toISOString()})
             ON CONFLICT (id) DO UPDATE SET
               title = EXCLUDED.title,
-              script = EXCLUDED.script,
-              shows_used = EXCLUDED.shows_used,
-              usage_count = EXCLUDED.usage_count,
-              first_used = EXCLUDED.first_used,
-              last_used = EXCLUDED.last_used,
-              status = EXCLUDED.status
+              kind = EXCLUDED.kind,
+              source_label = EXCLUDED.source_label,
+              week_start = EXCLUDED.week_start,
+              show_name = EXCLUDED.show_name,
+              content = EXCLUDED.content
           `
-          existingLiners.push({
-            id: newLinerId,
-            title: liner.title,
-            script: liner.script,
-            showsUsed: [showDisplayName],
-            usageCount: 1,
-            firstUsed: showDate,
-            lastUsed: showDate,
-          })
+
+          // Only structurally marked liner links are archived… never keyword guesses.
+          const extracted = extractLinerLinksFromShowItems(Array.isArray(workspace.items) ? workspace.items : [])
+
+          const existingRows = await sql`
+            SELECT id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at
+            FROM broadcastos_liner_archive
+            WHERE week_start = ${weekStart} AND user_id = ${userId}
+          ` as PresenterHubLinerRow[]
+
+          const existingLiners = existingRows.map((row) => ({
+            id: row.id,
+            title: row.title,
+            script: row.script,
+            showsUsed: parseShowsUsed(row.shows_used),
+            usageCount: row.usage_count,
+            firstUsed: row.first_used,
+            lastUsed: row.last_used,
+          }))
+
+          for (const liner of extracted) {
+            const linerTitle = normaliseForMatch(liner.title)
+            const linerScript = normaliseForMatch(liner.script)
+            const existing = existingLiners.find((item) => {
+              const title = normaliseForMatch(item.title)
+              const script = normaliseForMatch(item.script)
+              return title === linerTitle
+                || (title.length > 12 && linerScript.includes(title))
+                || (linerTitle.length > 12 && script.includes(linerTitle))
+                || (linerScript.length > 24 && script.length > 24 && (linerScript.includes(script) || script.includes(linerScript)))
+            })
+
+            if (existing) {
+              // One read per show day: saving the same show twice never double-counts.
+              const alreadyCountedToday = existing.lastUsed === showDate
+              const usageCount = alreadyCountedToday ? existing.usageCount : existing.usageCount + 1
+              const showsUsed = mergeShows(existing.showsUsed, [showDisplayName])
+
+              await sql`
+                UPDATE broadcastos_liner_archive
+                SET
+                  shows_used = ${JSON.stringify(showsUsed)}::jsonb,
+                  usage_count = ${usageCount},
+                  first_used = COALESCE(first_used, ${showDate}),
+                  last_used = ${showDate},
+                  status = 'Active'
+                WHERE id = ${existing.id} AND user_id = ${userId}
+              `
+            } else {
+              const newLinerId = crypto.randomUUID()
+              await sql`
+                INSERT INTO broadcastos_liner_archive (id, user_id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
+                VALUES (
+                  ${newLinerId},
+                  ${userId},
+                  ${liner.title},
+                  ${liner.script},
+                  ${weekStart},
+                  ${presenterImportId},
+                  ${JSON.stringify([showDisplayName])}::jsonb,
+                  1,
+                  ${showDate},
+                  ${showDate},
+                  'Active',
+                  ${new Date().toISOString()}
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                  title = EXCLUDED.title,
+                  script = EXCLUDED.script,
+                  shows_used = EXCLUDED.shows_used,
+                  usage_count = EXCLUDED.usage_count,
+                  first_used = EXCLUDED.first_used,
+                  last_used = EXCLUDED.last_used,
+                  status = EXCLUDED.status
+              `
+              existingLiners.push({
+                id: newLinerId,
+                title: liner.title,
+                script: liner.script,
+                showsUsed: [showDisplayName],
+                usageCount: 1,
+                firstUsed: showDate,
+                lastUsed: showDate,
+              })
+            }
+          }
         }
-      }
+
+    } catch (error) {
+      console.error("show-sessions: Presenter Hub archive failed", error)
     }
+  })
 
-  } catch (error) {
-    console.error("show-sessions: Presenter Hub archive failed", error)
-    archiveWarning = `Saved online, but the Presenter Hub archive step failed: ${errorMessage(error)}`
-  }
-
-  return Response.json({ session, status: cloudSaveStatus(), archiveWarning })
+  return Response.json({ session, status: cloudSaveStatus(), archiveWarning: null, archiveDeferred: true })
 }

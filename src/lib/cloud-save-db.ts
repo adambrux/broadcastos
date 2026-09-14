@@ -166,8 +166,13 @@ export async function ensureCloudSaveSchema(sql: BroadcastSql) {
   schemaReady = true
 }
 
+let presenterHubSchemaReady = false
+
 export async function ensurePresenterHubSchema(sql: BroadcastSql) {
   await ensureCloudSaveSchema(sql)
+  // Four schema statements on every save added whole seconds on a cold start.
+  // Once per warm function is plenty: the tables never change shape at runtime.
+  if (presenterHubSchemaReady) return
 
   await sql`
     CREATE TABLE IF NOT EXISTS broadcastos_presenter_imports (
@@ -208,6 +213,8 @@ export async function ensurePresenterHubSchema(sql: BroadcastSql) {
     CREATE INDEX IF NOT EXISTS broadcastos_liner_archive_week_start_idx
     ON broadcastos_liner_archive (week_start DESC)
   `
+
+  presenterHubSchemaReady = true
 }
 
 export async function ensureGameScoreSchema(sql: BroadcastSql) {
