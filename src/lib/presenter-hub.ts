@@ -103,7 +103,9 @@ export const mockLiners: LinerArchiveItem[] = [
 ]
 
 export function weekStartFromDate(value: string | Date = new Date()) {
-  const date = typeof value === "string" ? new Date(`${value}T12:00:00`) : new Date(value)
+  const parsed = typeof value === "string" ? new Date(`${value}T12:00:00`) : new Date(value)
+  // An unreadable date must never throw mid-save: fall back to this week.
+  const date = Number.isNaN(parsed.getTime()) ? new Date() : parsed
   const day = date.getDay()
   const diff = day === 0 ? -6 : 1 - day
   date.setDate(date.getDate() + diff)

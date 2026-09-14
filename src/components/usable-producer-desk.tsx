@@ -245,9 +245,10 @@ export function UsableProducerDesk() {
         throw new Error("THIS DEVICE IS SIGNED OUT… nothing is saving online. Sign in, then press Save online again. Your show is safe on this device.")
       }
       setSignedOutHere(false)
-      if (!response.ok) throw new Error(data?.error ?? "Could not save this show online.")
+      if (!response.ok) throw new Error(data?.error ?? `Could not save this show online (the server replied ${response.status}).`)
       setCloudTitle("")
-      await refreshCloudSessions("Show saved online. Open this app on iPad and load it from Saved Shows.")
+      const archiveWarning = typeof data?.archiveWarning === "string" && data.archiveWarning ? ` ${data.archiveWarning}` : ""
+      await refreshCloudSessions(`Show saved online. Open this app on iPad and load it from Saved Shows.${archiveWarning}`)
     } catch (error) {
       setCloudMessage(error instanceof Error ? error.message : "Could not save this show online.")
     } finally {

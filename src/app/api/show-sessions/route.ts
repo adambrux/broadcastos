@@ -97,6 +97,11 @@ export async function GET(request: Request) {
   return Response.json({ sessions: rows, status: cloudSaveStatus() })
 }
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message
+  return typeof error === "string" ? error : "unknown error"
+}
+
 export async function POST(request: Request) {
   const sql = getCloudSaveSql()
   if (!sql) {
@@ -110,137 +115,176 @@ export async function POST(request: Request) {
   if ("response" in auth) return auth.response
   const userId = auth.user.id
 
-  await ensurePresenterHubSchema(sql)
+  try {
+    await ensurePresenterHubSchema(sql)
+  } catch (error) {
+    console.error("show-sessions: schema check failed", error)
+    return Response.json(
+      { error: `Cloud save could not reach the database: ${errorMessage(error)}`, status: cloudSaveStatus() },
+      { status: 500 }
+    )
+  }
 
   const body = await request.json().catch(() => null)
-  const workspace = normaliseWorkspace(body?.workspace)
-  const id = typeof body?.id === "string" && body.id ? body.id : crypto.randomUUID()
-  const title = normaliseTitle(body?.title, defaultTitle(workspace))
+  if (!body || typeof body !== "object") {
+    return Response.json(
+      { error: "The show could not be read for saving (the request was empty or not valid JSON).", status: cloudSaveStatus() },
+      { status: 400 }
+    )
+  }
+
+  const workspace = normaliseWorkspace(body.workspace)
+  const id = typeof body.id === "string" && body.id ? body.id : crypto.randomUUID()
+  const title = normaliseTitle(body.title, defaultTitle(workspace))
   const showId = typeof workspace.showId === "string" && workspace.showId ? workspace.showId : "afternoons"
   const showDate = typeof workspace.date === "string" && workspace.date ? workspace.date : new Date().toISOString().slice(0, 10)
   const workspaceJson = JSON.stringify({ ...workspace, updatedAt: new Date().toISOString() })
 
-  const rows = await sql`
-    INSERT INTO broadcastos_show_sessions (id, user_id, title, show_id, show_date, workspace)
-    VALUES (${id}, ${userId}, ${title}, ${showId}, ${showDate}, ${workspaceJson}::jsonb)
-    ON CONFLICT (id) DO UPDATE SET
-      title = EXCLUDED.title,
-      show_id = EXCLUDED.show_id,
-      show_date = EXCLUDED.show_date,
-      workspace = EXCLUDED.workspace,
-      updated_at = NOW()
-    WHERE broadcastos_show_sessions.user_id = ${userId}
-    RETURNING id, title, show_id, show_date, created_at, updated_at
-  ` as SavedShowSessionSaveRow[]
-
-  const [session] = rows
-
-  const showDisplayName = auth.user.role !== "owner" && auth.user.showName ? auth.user.showName : showName(showId)
-  const weekStart = weekStartFromDate(showDate)
-  const showScriptContent = serialiseShowPlanForPresenterHub(workspace)
-  const presenterImportId = `show-session-${id}`
-
-  if (showScriptContent.trim()) {
-    const importTitle = friendlyImportTitle("show-script", showDisplayName, weekStart)
-
-    await sql`
-      INSERT INTO broadcastos_presenter_imports (id, user_id, title, kind, source_label, week_start, show_name, original_filename, content, created_at)
-      VALUES (${presenterImportId}, ${userId}, ${importTitle}, ${"show-script"}, ${"Show script"}, ${weekStart}, ${showDisplayName}, ${null}, ${showScriptContent}, ${new Date().toISOString()})
+  let rows: SavedShowSessionSaveRow[]
+  try {
+    rows = await sql`
+      INSERT INTO broadcastos_show_sessions (id, user_id, title, show_id, show_date, workspace)
+      VALUES (${id}, ${userId}, ${title}, ${showId}, ${showDate}, ${workspaceJson}::jsonb)
       ON CONFLICT (id) DO UPDATE SET
         title = EXCLUDED.title,
-        kind = EXCLUDED.kind,
-        source_label = EXCLUDED.source_label,
-        week_start = EXCLUDED.week_start,
-        show_name = EXCLUDED.show_name,
-        content = EXCLUDED.content
-    `
-
-    // Only structurally marked liner links are archived… never keyword guesses.
-    const extracted = extractLinerLinksFromShowItems(Array.isArray(workspace.items) ? workspace.items : [])
-
-    const existingRows = await sql`
-      SELECT id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at
-      FROM broadcastos_liner_archive
-      WHERE week_start = ${weekStart} AND user_id = ${userId}
-    ` as PresenterHubLinerRow[]
-
-    const existingLiners = existingRows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      script: row.script,
-      showsUsed: parseShowsUsed(row.shows_used),
-      usageCount: row.usage_count,
-      firstUsed: row.first_used,
-      lastUsed: row.last_used,
-    }))
-
-    for (const liner of extracted) {
-      const linerTitle = normaliseForMatch(liner.title)
-      const linerScript = normaliseForMatch(liner.script)
-      const existing = existingLiners.find((item) => {
-        const title = normaliseForMatch(item.title)
-        const script = normaliseForMatch(item.script)
-        return title === linerTitle
-          || (title.length > 12 && linerScript.includes(title))
-          || (linerTitle.length > 12 && script.includes(linerTitle))
-          || (linerScript.length > 24 && script.length > 24 && (linerScript.includes(script) || script.includes(linerScript)))
-      })
-
-      if (existing) {
-        // One read per show day: saving the same show twice never double-counts.
-        const alreadyCountedToday = existing.lastUsed === showDate
-        const usageCount = alreadyCountedToday ? existing.usageCount : existing.usageCount + 1
-        const showsUsed = mergeShows(existing.showsUsed, [showDisplayName])
-
-        await sql`
-          UPDATE broadcastos_liner_archive
-          SET
-            shows_used = ${JSON.stringify(showsUsed)}::jsonb,
-            usage_count = ${usageCount},
-            first_used = COALESCE(first_used, ${showDate}),
-            last_used = ${showDate},
-            status = 'Active'
-          WHERE id = ${existing.id} AND user_id = ${userId}
-        `
-      } else {
-        const newLinerId = crypto.randomUUID()
-        await sql`
-          INSERT INTO broadcastos_liner_archive (id, user_id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
-          VALUES (
-            ${newLinerId},
-            ${userId},
-            ${liner.title},
-            ${liner.script},
-            ${weekStart},
-            ${presenterImportId},
-            ${JSON.stringify([showDisplayName])}::jsonb,
-            1,
-            ${showDate},
-            ${showDate},
-            'Active',
-            ${new Date().toISOString()}
-          )
-          ON CONFLICT (id) DO UPDATE SET
-            title = EXCLUDED.title,
-            script = EXCLUDED.script,
-            shows_used = EXCLUDED.shows_used,
-            usage_count = EXCLUDED.usage_count,
-            first_used = EXCLUDED.first_used,
-            last_used = EXCLUDED.last_used,
-            status = EXCLUDED.status
-        `
-        existingLiners.push({
-          id: newLinerId,
-          title: liner.title,
-          script: liner.script,
-          showsUsed: [showDisplayName],
-          usageCount: 1,
-          firstUsed: showDate,
-          lastUsed: showDate,
-        })
-      }
-    }
+        show_id = EXCLUDED.show_id,
+        show_date = EXCLUDED.show_date,
+        workspace = EXCLUDED.workspace,
+        updated_at = NOW()
+      WHERE broadcastos_show_sessions.user_id = ${userId}
+      RETURNING id, title, show_id, show_date, created_at, updated_at
+    ` as SavedShowSessionSaveRow[]
+  } catch (error) {
+    console.error("show-sessions: save failed", error)
+    return Response.json(
+      { error: `The show did not save online: ${errorMessage(error)}`, status: cloudSaveStatus() },
+      { status: 500 }
+    )
   }
 
-  return Response.json({ session, status: cloudSaveStatus() })
+  const [session] = rows
+  if (!session) {
+    return Response.json(
+      { error: "The show did not save online: a saved show with this id belongs to another account. Save it under a new name.", status: cloudSaveStatus() },
+      { status: 409 }
+    )
+  }
+
+  // The show is safe from here. Archiving into the Presenter Hub is best-effort:
+  // a failure there is reported back, never allowed to undo the save above.
+  let archiveWarning: string | null = null
+  try {
+    const showDisplayName = auth.user.role !== "owner" && auth.user.showName ? auth.user.showName : showName(showId)
+    const weekStart = weekStartFromDate(showDate)
+    const showScriptContent = serialiseShowPlanForPresenterHub(workspace)
+    const presenterImportId = `show-session-${id}`
+
+    if (showScriptContent.trim()) {
+      const importTitle = friendlyImportTitle("show-script", showDisplayName, weekStart)
+
+      await sql`
+        INSERT INTO broadcastos_presenter_imports (id, user_id, title, kind, source_label, week_start, show_name, original_filename, content, created_at)
+        VALUES (${presenterImportId}, ${userId}, ${importTitle}, ${"show-script"}, ${"Show script"}, ${weekStart}, ${showDisplayName}, ${null}, ${showScriptContent}, ${new Date().toISOString()})
+        ON CONFLICT (id) DO UPDATE SET
+          title = EXCLUDED.title,
+          kind = EXCLUDED.kind,
+          source_label = EXCLUDED.source_label,
+          week_start = EXCLUDED.week_start,
+          show_name = EXCLUDED.show_name,
+          content = EXCLUDED.content
+      `
+
+      // Only structurally marked liner links are archived… never keyword guesses.
+      const extracted = extractLinerLinksFromShowItems(Array.isArray(workspace.items) ? workspace.items : [])
+
+      const existingRows = await sql`
+        SELECT id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at
+        FROM broadcastos_liner_archive
+        WHERE week_start = ${weekStart} AND user_id = ${userId}
+      ` as PresenterHubLinerRow[]
+
+      const existingLiners = existingRows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        script: row.script,
+        showsUsed: parseShowsUsed(row.shows_used),
+        usageCount: row.usage_count,
+        firstUsed: row.first_used,
+        lastUsed: row.last_used,
+      }))
+
+      for (const liner of extracted) {
+        const linerTitle = normaliseForMatch(liner.title)
+        const linerScript = normaliseForMatch(liner.script)
+        const existing = existingLiners.find((item) => {
+          const title = normaliseForMatch(item.title)
+          const script = normaliseForMatch(item.script)
+          return title === linerTitle
+            || (title.length > 12 && linerScript.includes(title))
+            || (linerTitle.length > 12 && script.includes(linerTitle))
+            || (linerScript.length > 24 && script.length > 24 && (linerScript.includes(script) || script.includes(linerScript)))
+        })
+
+        if (existing) {
+          // One read per show day: saving the same show twice never double-counts.
+          const alreadyCountedToday = existing.lastUsed === showDate
+          const usageCount = alreadyCountedToday ? existing.usageCount : existing.usageCount + 1
+          const showsUsed = mergeShows(existing.showsUsed, [showDisplayName])
+
+          await sql`
+            UPDATE broadcastos_liner_archive
+            SET
+              shows_used = ${JSON.stringify(showsUsed)}::jsonb,
+              usage_count = ${usageCount},
+              first_used = COALESCE(first_used, ${showDate}),
+              last_used = ${showDate},
+              status = 'Active'
+            WHERE id = ${existing.id} AND user_id = ${userId}
+          `
+        } else {
+          const newLinerId = crypto.randomUUID()
+          await sql`
+            INSERT INTO broadcastos_liner_archive (id, user_id, title, script, week_start, source_import_id, shows_used, usage_count, first_used, last_used, status, created_at)
+            VALUES (
+              ${newLinerId},
+              ${userId},
+              ${liner.title},
+              ${liner.script},
+              ${weekStart},
+              ${presenterImportId},
+              ${JSON.stringify([showDisplayName])}::jsonb,
+              1,
+              ${showDate},
+              ${showDate},
+              'Active',
+              ${new Date().toISOString()}
+            )
+            ON CONFLICT (id) DO UPDATE SET
+              title = EXCLUDED.title,
+              script = EXCLUDED.script,
+              shows_used = EXCLUDED.shows_used,
+              usage_count = EXCLUDED.usage_count,
+              first_used = EXCLUDED.first_used,
+              last_used = EXCLUDED.last_used,
+              status = EXCLUDED.status
+          `
+          existingLiners.push({
+            id: newLinerId,
+            title: liner.title,
+            script: liner.script,
+            showsUsed: [showDisplayName],
+            usageCount: 1,
+            firstUsed: showDate,
+            lastUsed: showDate,
+          })
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error("show-sessions: Presenter Hub archive failed", error)
+    archiveWarning = `Saved online, but the Presenter Hub archive step failed: ${errorMessage(error)}`
+  }
+
+  return Response.json({ session, status: cloudSaveStatus(), archiveWarning })
 }

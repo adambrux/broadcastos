@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.36 · Saved regardless · 14 September 2026
+
+- Save online now saves the show first and treats the Presenter Hub archive as a separate, best-effort step. If the archive step fails, the show is still saved and the message says exactly what went wrong instead of reporting a failed save.
+- Every failure on the save path now comes back with its real reason (database unreachable, the row not written, an id owned by another account, or a server error code), so a "could not save" message is never a mystery again.
+- A show date the server cannot read no longer breaks the save: the week is worked out from today instead.
+
 ## v2.35 · The breakfast chair · 11 September 2026
 
 - Gospel Breakfast is now a show in its own right: pick it from the show list, import a breakfast plan straight into its own workspace, and cover mornings without borrowing another show's home. Plans whose Show line says Gospel Breakfast are detected automatically (Saturday Breakfast still maps to Saturday).
