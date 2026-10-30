@@ -34,6 +34,10 @@ export type StudioItem = {
   fallback: string
   stationRequirement: string
   notes: string
+  /** The song(s) this link comes out of, for the back-announce (v2.38, 30 Oct 2026). Optional so older saved shows still open. */
+  justPlayed?: string
+  /** The one or two songs going out of this link, in order, with lengths (v2.38). */
+  nextSongs?: string
   done: boolean
 }
 
@@ -113,6 +117,8 @@ const makeItem = (
   fallback: details.fallback ?? "",
   stationRequirement: details.stationRequirement ?? "",
   notes: details.notes ?? "",
+  justPlayed: details.justPlayed ?? "",
+  nextSongs: details.nextSongs ?? "",
   done: false,
 })
 

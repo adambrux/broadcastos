@@ -39,6 +39,15 @@ const fieldAliases: Record<string, string> = {
   "fallback if quiet": "fallback",
   fallback: "fallback",
   "fallback required": "fallbackRequired",
+  // The music strip (v2.38, 30 Oct 2026): what the link comes out of, and the one or two songs going out of it.
+  "just played": "justPlayed",
+  "into this link": "justPlayed",
+  "coming out of": "justPlayed",
+  "next songs": "nextSongs",
+  "next song": "nextSongs",
+  "out of this link": "nextSongs",
+  songs: "nextSongs",
+  music: "nextSongs",
   "listener led": "listenerLed",
   "listener-led": "listenerLed",
   notes: "notes",
@@ -316,8 +325,9 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
     // Six links per hour is Adam's own show format (the six-link law). Cover
     // shows like Gospel Breakfast follow the host producer's clock, so their
     // hour counts vary and are never worth a warning.
-    if (linkSections.length !== 6 && (showId === "afternoons" || showId === "sundays" || showId === undefined)) {
-      warnings.push(`Hour ${hourNumber} should contain exactly six links. BroadcastOS found ${linkSections.length}.`)
+    // Five to seven: five when the songs are long (New Music Monday, 30 Oct 2026), six is the house shape, seven with a P1 read.
+    if ((linkSections.length < 5 || linkSections.length > 7) && (showId === "afternoons" || showId === "sundays" || showId === undefined)) {
+      warnings.push(`Hour ${hourNumber} should contain five to seven links. BroadcastOS found ${linkSections.length}.`)
     }
 
     linkSections.forEach((linkSection, index) => {
@@ -357,6 +367,8 @@ export function parseShowPlanImport(value: string): ShowPlanImportResult {
         fallback: "",
         stationRequirement: clean(fields.stationRequirement),
         notes,
+        justPlayed: clean(fields.justPlayed),
+        nextSongs: clean(fields.nextSongs),
         done: false,
       }
 

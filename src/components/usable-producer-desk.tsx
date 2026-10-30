@@ -963,6 +963,10 @@ export function UsableProducerDesk() {
                   <Field label="Step 5 · Tease Ahead"><textarea rows={3} className={textareaClass} value={selected.tease} onChange={(event) => updateItem(selected.id, "tease", event.target.value)} placeholder="Why should the listener stay?" /></Field>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-2">
+                  <Field label="Just played (the song this link comes out of)"><textarea rows={2} className={textareaClass} value={selected.justPlayed ?? ""} onChange={(event) => updateItem(selected.id, "justPlayed", event.target.value)} placeholder="Artist, Title…" /></Field>
+                  <Field label="Next songs (out of this link, in order)"><textarea rows={2} className={textareaClass} value={selected.nextSongs ?? ""} onChange={(event) => updateItem(selected.id, "nextSongs", event.target.value)} placeholder={"1. Artist, Title (3:04)\n2. Artist, Title (4:10)"} /></Field>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
                   <Field label="Station requirements"><textarea rows={3} className={textareaClass} value={selected.stationRequirement} onChange={(event) => updateItem(selected.id, "stationRequirement", event.target.value)} placeholder="Time check · Station ID · Presenter ID · liner placement…" /></Field>
                   <Field label="Producer notes"><textarea rows={3} className={textareaClass} value={selected.notes} onChange={(event) => updateItem(selected.id, "notes", event.target.value)} placeholder="Timing, audio, pronunciation or handover notes…" /></Field>
                 </div>

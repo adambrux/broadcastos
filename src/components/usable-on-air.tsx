@@ -712,6 +712,19 @@ export function UsableOnAir() {
           </div>
         </section>
 
+        {(current.justPlayed || current.nextSongs) && (
+          <section className="grid gap-3 rounded-[24px] border border-emerald-300/25 bg-emerald-300/[0.07] p-4 sm:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] sm:p-5">
+            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">Just played · back-announce</p>
+              <p className="mt-2 whitespace-pre-line text-base font-semibold leading-6 text-white/80">{current.justPlayed || "Top of the show"}</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-300/30 bg-emerald-400/[0.12] px-4 py-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100">Next · out of this link</p>
+              <p className="mt-2 whitespace-pre-line text-lg font-bold leading-7 text-emerald-50 sm:text-xl">{current.nextSongs || "No song logged for this link"}</p>
+            </div>
+          </section>
+        )}
+
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
           <section className="space-y-4">
             <article className="rounded-[30px] border border-white/10 bg-white/[0.035] p-4 shadow-[0_24px_80px_rgba(0,0,0,.24)] sm:p-5">

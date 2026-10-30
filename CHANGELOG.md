@@ -2,6 +2,13 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.38 · What's playing · 30 October 2026
+
+- Every link can now carry two music lines: Just played (the song you're coming out of, for the back-announce) and Next songs (the one or two going out of this link, in order, with lengths). On Air shows them in their own green strip at the top of the link, so what just played and what's coming next is never a guess, even when the log changed at the last minute.
+- The importer reads them from a show plan as "Just Played:" and "Next Songs:" (it also understands "Into this link", "Out of this link", "Songs" and "Music").
+- The Producer Desk has both fields on every link, and the Presenter Hub archive keeps them.
+- The links-per-hour warning now accepts five to seven, which is how New Music Monday hours are built (a link, then two songs, then a link, then two songs).
+
 ## v2.37 · Straight away · 14 September 2026
 
 - Save online now replies the moment the show row is written. The Presenter Hub archive (script copy and liner read counts) runs in the background after the reply, so a slow archive on a cold start can no longer make a successful save look like a failure or a delay.

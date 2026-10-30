@@ -277,6 +277,8 @@ export function serialiseShowPlanForPresenterHub(workspace: {
       readStringField(item, "momentNoResponses") ? `The Moment · If No Responses: ${readStringField(item, "momentNoResponses")}` : "",
       readStringField(item, "cta") ? `Call To Action: ${readStringField(item, "cta")}` : "",
       readStringField(item, "tease") ? `Tease Ahead: ${readStringField(item, "tease")}` : "",
+      readStringField(item, "justPlayed") ? `Just Played: ${readStringField(item, "justPlayed")}` : "",
+      readStringField(item, "nextSongs") ? `Next Songs: ${readStringField(item, "nextSongs")}` : "",
       readStringField(item, "stationRequirement") ? `Station Requirement: ${readStringField(item, "stationRequirement")}` : "",
       readStringField(item, "next") ? `What Comes Next: ${readStringField(item, "next")}` : "",
       readStringField(item, "notes") ? `Producer Notes: ${readStringField(item, "notes")}` : "",
