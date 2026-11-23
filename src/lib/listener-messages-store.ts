@@ -102,9 +102,29 @@ export async function updateMessage(
   return row ? messageFromRow(row) : null
 }
 
+/**
+ * Deletes a message. When it was the only message from that person on that
+ * show day, the name-log row it created goes too, so a paste by mistake (or a
+ * test) leaves no trace in the regulars list or the missing list.
+ */
 export async function deleteMessage(sql: BroadcastSql, userId: string, id: string) {
   await ensureListenerMessagesSchema(sql)
-  await sql`DELETE FROM broadcastos_listener_messages WHERE id = ${id} AND user_id = ${userId}`
+  const rows = await sql`
+    DELETE FROM broadcastos_listener_messages WHERE id = ${id} AND user_id = ${userId}
+    RETURNING name_key, show_id, show_date
+  ` as { name_key: string; show_id: string; show_date: string }[]
+  const gone = rows.at(0)
+  if (!gone) return
+  const remaining = await sql`
+    SELECT COUNT(*)::int AS count FROM broadcastos_listener_messages
+    WHERE user_id = ${userId} AND name_key = ${gone.name_key} AND show_id = ${gone.show_id} AND show_date = ${gone.show_date}
+  ` as { count: number }[]
+  if ((remaining.at(0)?.count ?? 0) === 0) {
+    await sql`
+      DELETE FROM broadcastos_listener_log
+      WHERE user_id = ${userId} AND name_key = ${gone.name_key} AND show_id = ${gone.show_id} AND show_date = ${gone.show_date} AND message_count <= 1
+    `
+  }
 }
 
 /** Variant ids of every check-in already sent to this person. */

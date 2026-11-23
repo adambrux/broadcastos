@@ -2,6 +2,10 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.43 · No trace · 23 November 2026
+
+- Deleting a banked message also removes the name-log entry it created when it was the only message from that person on that show day, so a paste by mistake or a test message leaves nothing behind in the regulars list or the missing list.
+
 ## v2.42 · Producer paste · 23 November 2026
 
 - The producer can bank a message too: POST /api/inbox/messages with a name and the text banks it in Adam's account and writes the read version, exactly as the app does, and DELETE removes one. So a WhatsApp forwarded to the producer lands in the same bank, and the message bank can be tested end to end without a sign-in.
