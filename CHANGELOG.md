@@ -2,6 +2,14 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.46 · Any messages? · 23 November 2026
+
+- The tray. When a link asks "do you have listener responses?" and the answer is YES, the messages are right there: every banked read not yet used and every Pocket note for later today, newest first, each with its reading time. Tap the ones to read in order, or Read the newest 1, 2 or 3. The picks are saved on the link, so the laptop and the iPad agree, and they appear in the script under the Moment as 3.1, 3.2 and so on. Mark done ticks them Used. The tray also has Paste one now, and it is on every link, gate or no gate.
+- Reading time. Every link shows an estimate in the On Air hour box: the script's words plus the picked messages at Adam's pace (about 150 words a minute), against the target typed on the link, amber when over. The Desk shows talk time per hour against the targets. Pocket notes sit in the tray without a time.
+- Names autocomplete in the paste box against everyone on the system, and say "On the system" or "New person". Banking a message creates the profile for a new name.
+- The missing list has a start date. It counts from Tuesday 24 November 2026: nobody is missing until a week after it, then people appear daily as they go quiet. Everyone who has ever messaged in is on the watch list. Reset the missing list is on the full pastoral panel.
+- After the show, a new page: who has gone quiet today, each with their check-in written and Copy and mark sent, plus today's numbers and the Pocket's another-day notes. The final link On Air says how many to check in on, and the end-of-show reset button now opens the page.
+
 ## v2.45 · She, he or they · 23 November 2026
 
 - Tell the read how to refer to the person. The paste form has She, He, They or App decides; a message from someone Adam knows gets the right word first time instead of a careful "they". The choice is kept on the message and used again by Write it again, where it can also be changed.

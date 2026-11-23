@@ -38,6 +38,8 @@ export type StudioItem = {
   justPlayed?: string
   /** The one or two songs going out of this link, in order, with lengths (v2.38). */
   nextSongs?: string
+  /** Messages picked to read in this link (v2.46): "m:<bank id>" or "p:<pocket id>", in reading order. */
+  readMessageIds?: string[]
   done: boolean
 }
 

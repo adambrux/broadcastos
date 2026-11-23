@@ -2,7 +2,7 @@ import { getCloudSaveSql } from "@/lib/cloud-save-db"
 import { inboxRefusal, resolveInboxUser } from "@/lib/inbox-auth"
 import { bumpListenerLog } from "@/lib/listener-log-store"
 import { isMessageSource, isPronoun } from "@/lib/listener-messages-shared"
-import { deleteMessage, findMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
+import { deleteMessage, ensureProfile, findMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
 import { readVersionConfigured, writeReadVersion } from "@/lib/read-version"
 import { showDisplayNameFor } from "@/lib/show-session-store"
 
@@ -89,6 +89,7 @@ export async function POST(request: Request) {
   const message = await insertMessage(sql, owner.id, { name, source, raw, readVersion: written, showId, showDate, pronoun })
   if (!message) return Response.json({ error: "The message did not save." }, { status: 500 })
   await bumpListenerLog(sql, owner.id, { name, showId, showDate, source }).catch((error) => console.error("inbox messages: name log bump failed", error))
+  await ensureProfile(sql, owner.id, name).catch((error) => console.error("inbox messages: profile failed", error))
   return Response.json({ message, ai: readVersionConfigured(), readError })
 }
 

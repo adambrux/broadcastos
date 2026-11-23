@@ -34,12 +34,16 @@ import { StudioLivePill } from "@/components/app-shell"
 import { openAppSplash } from "@/components/app-splash-screen"
 import { GameScoreboard } from "@/components/game-scoreboard"
 import { ListenerMessagesButton } from "@/components/listener-messages"
+import { LinkMessagesTray, pickablesFrom } from "@/components/link-messages-tray"
 import { ParkedPocketButton } from "@/components/parked-pocket"
 import { ProducerLineBadge } from "@/components/producer-line-badge"
 import { LaunchSequenceBody, LaunchSequenceIndicator } from "@/components/show-launch-sequence"
 import { StudioAmbient } from "@/components/studio-motion"
 import { useLaunchSequence } from "@/lib/launch-sequence"
-import { listenerSources, useListenerLog, type ListenerSource } from "@/lib/listener-log"
+import { listenerSources, useListenerLog, usePastoralCare, type ListenerSource } from "@/lib/listener-log"
+import { useListenerMessages } from "@/lib/listener-messages"
+import { useParkedNotes } from "@/lib/parked-notes"
+import { estimateSeconds, formatClock, parseTargetSeconds, readingPace } from "@/lib/read-time"
 import { reportScriptIssue } from "@/lib/script-issues"
 import {
   saveStudioWorkspace,
@@ -195,6 +199,29 @@ export function UsableOnAir() {
   const linerLink = isLinerLink(current)
   const showDate = workspace.date || new Date().toISOString().slice(0, 10)
   const listeners = useListenerLog(workspace.showId, showDate)
+  // THE TRAY (v2.46): the banked reads and Pocket notes a link can read, the picks saved on the link.
+  const bank = useListenerMessages()
+  const pocket = useParkedNotes()
+  const care = usePastoralCare()
+  const [trayOpen, setTrayOpen] = useState(false)
+  const [pace, setPace] = useState(150)
+  useEffect(() => { setPace(readingPace()) }, [])
+  const pickables = useMemo(() => pickablesFrom(bank.messages, pocket.open, pace), [bank.messages, pocket.open, pace])
+  const picks = useMemo(() => current?.readMessageIds ?? [], [current?.readMessageIds])
+  const pickedItems = useMemo(() => picks.map((key) => pickables.find((item) => item.key === key)).filter((item): item is NonNullable<typeof item> => Boolean(item)), [picks, pickables])
+  const scriptSeconds = current ? estimateSeconds([current.context, current.recap, visibleMoment, current.cta, current.tease].join(" "), pace) : 0
+  const messagesSeconds = pickedItems.reduce((sum, item) => sum + item.seconds, 0)
+  const linkSeconds = scriptSeconds + messagesSeconds
+  const targetSeconds = parseTargetSeconds(current?.duration)
+  const overTarget = targetSeconds !== null && linkSeconds > targetSeconds + 10
+
+  function setPicks(keys: string[]) {
+    if (!current) return
+    saveStudioWorkspace({
+      ...workspace,
+      items: workspace.items.map((item) => (item.id === current.id ? { ...item, readMessageIds: keys } : item)),
+    })
+  }
 
   const stopPrompter = useCallback(() => {
     if (prompterControl.current) {
@@ -344,6 +371,11 @@ export function UsableOnAir() {
     if (!current || markingDone || responseGateOpen) return
     stopPrompter()
     setMarkingDone(true)
+    // The reads this link carried are used now: they never come round twice.
+    for (const item of pickedItems) {
+      if (item.kind === "message") void bank.patch(item.id, { used: true }).catch(() => {})
+      else pocket.markUsed(item.id)
+    }
     window.setTimeout(() => {
       saveStudioWorkspace({
         ...workspace,
@@ -368,6 +400,7 @@ export function UsableOnAir() {
   function chooseResponses(choice: "yes" | "no") {
     if (!current) return
     setResponseChoices((choices) => ({ ...choices, [current.id]: choice }))
+    if (choice === "yes") setTrayOpen(true)
   }
 
   function addListener(name = listenerName) {
@@ -483,6 +516,15 @@ export function UsableOnAir() {
       labelClassName: linerLink ? "text-fuchsia-100" : "text-white/45",
       textClassName: "text-[22px] font-medium leading-[1.45] tracking-[-0.02em] sm:text-[28px]",
     },
+    ...pickedItems.map((item, index) => ({
+      number: `3.${index + 1}`,
+      label: item.kind === "pocket" ? `From the Pocket · ${item.name}` : `${item.name} · ${formatClock(item.seconds)}`,
+      helper: item.kind === "pocket" ? "Parked earlier" : "Read as them",
+      text: item.text,
+      className: "border-emerald-300/30 bg-emerald-400/[0.08]",
+      labelClassName: "text-emerald-100",
+      textClassName: "text-[22px] font-medium leading-[1.45] tracking-[-0.02em] sm:text-[28px]",
+    })),
     {
       number: "4",
       label: "Call To Action",
@@ -560,9 +602,12 @@ export function UsableOnAir() {
               </ul>
             </div>
             <div className="mt-7">
-              <Button className="h-14 w-full rounded-2xl bg-amber-300 text-base font-semibold text-ink hover:bg-amber-200" onClick={() => setStudioResetConfirmed(true)}>
-                <ShieldCheck />I&apos;ve reset the studio
+              <Button className="h-14 w-full rounded-2xl bg-amber-300 text-base font-semibold text-ink hover:bg-amber-200" onClick={() => { setStudioResetConfirmed(true); window.location.href = "/wrap" }}>
+                <ShieldCheck />I&apos;ve reset the studio, show me who to message
               </Button>
+              <p className="mt-3 text-center text-sm text-amber-50/70">
+                {care.mia.length ? `${care.mia.length} ${care.mia.length === 1 ? "person has" : "people have"} gone quiet. Their check-ins are written and waiting.` : "Nobody has gone quiet today."}
+              </p>
             </div>
           </div>
         </div>
@@ -711,6 +756,9 @@ export function UsableOnAir() {
                 {hourLinkNumber}<span className="text-2xl text-white/35">/{hourLinkTotal}</span>
               </p>
               <p className="mt-1.5 text-[11px] font-medium text-white/45">{activeIndex + 1} of {workspace.items.length} in the show</p>
+              <p className={cn("mt-1.5 text-[11px] font-semibold", overTarget ? "text-amber-300" : "text-emerald-200")} title="Script plus the messages picked, at your reading pace">
+                about {formatClock(linkSeconds)}{targetSeconds !== null ? ` of ${formatClock(targetSeconds)}` : ""}{pickedItems.length ? ` · ${pickedItems.length} message${pickedItems.length === 1 ? "" : "s"}` : ""}
+              </p>
             </div>
           </div>
         </section>
@@ -896,6 +944,17 @@ export function UsableOnAir() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <LinkMessagesTray
+                    showId={workspace.showId}
+                    showDate={showDate}
+                    items={pickables}
+                    picks={picks}
+                    onPicksChange={setPicks}
+                    add={bank.add}
+                    aiOff={bank.ai === false}
+                    open={trayOpen}
+                    onToggle={() => setTrayOpen((value) => !value)}
+                  />
                   {liveSteps.map((step) => (
                   <section key={step.number} className={`rounded-[24px] border p-5 sm:p-6 ${step.className}`}>
                     <div className="flex gap-4">
@@ -920,6 +979,19 @@ export function UsableOnAir() {
                   <AlertTriangle className="size-5 shrink-0 text-amber-300" />
                   ZETTA: Live Assist back to AUTO after this link. Mic down. Channel 3 down.
                 </p>
+              </div>
+            )}
+            {isLastItem && !care.loading && (
+              <div className={cn("rounded-[22px] border p-4", care.mia.length ? "border-fuchsia-300/40 bg-fuchsia-400/[0.12]" : "border-white/10 bg-white/[0.045]")}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="flex items-center gap-3 text-base font-bold text-white">
+                    <HandHeart className="size-5 shrink-0 text-fuchsia-200" />
+                    {care.mia.length ? `After this link: ${care.mia.length} ${care.mia.length === 1 ? "person" : "people"} to check in on.` : "After this link: nobody's gone quiet. Nothing to send."}
+                  </p>
+                  <Button asChild variant="outline" className="h-10 rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                    <Link href="/wrap">Open After the show</Link>
+                  </Button>
+                </div>
               </div>
             )}
 

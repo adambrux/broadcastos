@@ -6,6 +6,7 @@ import {
   type ListenerProfileRow,
 } from "@/lib/cloud-save-db"
 import { requireUser } from "@/lib/auth-db"
+import { DEFAULT_MIA_FLOOR, MIA_FLOOR_KEY, getSetting, setSetting } from "@/lib/settings-store"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -75,9 +76,12 @@ export async function GET(request: Request) {
       LIMIT 400
     ` as ListenerNoteRow[]
 
+    const miaFloor = (await getSetting(sql, userId, MIA_FLOOR_KEY).catch(() => null)) ?? DEFAULT_MIA_FLOOR
+
     return Response.json({
       profiles: profileRows.map(profileFromRow),
       notes: noteRows.map(noteFromRow),
+      settings: { miaFloor },
       status: cloudSaveStatus(),
     })
   } catch (error) {
@@ -157,6 +161,8 @@ type PatchPayload = {
   checkin?: boolean
   noteId?: string
   followedUp?: boolean
+  resetMissing?: boolean
+  floor?: string
 }
 
 export async function PATCH(request: Request) {
@@ -174,6 +180,13 @@ export async function PATCH(request: Request) {
 
     const body = await request.json().catch(() => null) as PatchPayload | null
     const now = new Date().toISOString()
+
+    // Start the missing list again from a day (v2.46): nobody is missing until a week after it.
+    if (body?.resetMissing) {
+      const floor = typeof body.floor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.floor) ? body.floor : now.slice(0, 10)
+      await setSetting(sql, userId, MIA_FLOOR_KEY, floor)
+      return Response.json({ settings: { miaFloor: floor }, status: cloudSaveStatus() })
+    }
 
     // Mark a pastoral check-in: the presenter has personally contacted this listener.
     if (body?.checkin && typeof body.name === "string" && body.name.trim()) {

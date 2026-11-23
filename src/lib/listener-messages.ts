@@ -1,11 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ListenerMessage, MessageSource, Pronoun } from "@/lib/listener-messages-shared"
 
 /** THE MESSAGE BANK on the client (v2.41): recent messages, paste one in, fix a read, tick it used. */
 
-type AddInput = { name: string; raw: string; source: MessageSource; pronoun?: Pronoun; showId: string; showDate: string }
+export type AddInput = { name: string; raw: string; source: MessageSource; pronoun?: Pronoun; showId: string; showDate: string }
+export type AddResult = { message: ListenerMessage; readError: string | null }
 
 export function useListenerMessages(options: { name?: string; auto?: boolean } = {}) {
   const [messages, setMessages] = useState<ListenerMessage[]>([])
@@ -72,4 +73,44 @@ export function useListenerMessages(options: { name?: string; auto?: boolean } =
   }, [])
 
   return { messages, ai, loading, error, refresh, add, patch, remove }
+}
+
+function nameKey(name: string) {
+  return name.toLowerCase().replace(/\s+/g, " ").trim()
+}
+
+/** Everyone on the system, for the name box: profiles and every name ever logged. */
+export function useKnownNames() {
+  const [names, setNames] = useState<string[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const [listeners, profiles] = await Promise.all([
+        fetch("/api/listeners", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null) as Promise<{ totals?: { name: string }[] } | null>,
+        fetch("/api/listener-profiles", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null) as Promise<{ profiles?: { name: string }[] } | null>,
+      ])
+      if (cancelled) return
+      const seen = new Map<string, string>()
+      for (const candidate of [...(profiles?.profiles ?? []), ...(listeners?.totals ?? [])]) {
+        const key = nameKey(candidate.name)
+        if (key && !seen.has(key)) seen.set(key, candidate.name)
+      }
+      setNames([...seen.values()].sort((a, b) => a.localeCompare(b)))
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [])
+
+  return useMemo(() => ({
+    names,
+    has: (query: string) => { const key = nameKey(query); return Boolean(key) && names.some((name) => nameKey(name) === key) },
+    suggest: (query: string) => {
+      const key = nameKey(query)
+      if (!key) return []
+      const starts = names.filter((name) => nameKey(name).startsWith(key))
+      const contains = names.filter((name) => !nameKey(name).startsWith(key) && nameKey(name).includes(key))
+      return [...starts, ...contains].slice(0, 5)
+    },
+  }), [names])
 }

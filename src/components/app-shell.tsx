@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import {
+  HeartHandshake,
   BarChart3,
   ChevronDown,
   Flag,
@@ -62,6 +63,7 @@ const navigation = [
   { label: "Script issues", href: "/issues", icon: Flag },
   { label: "Podcast", href: "/podcast", icon: Mic2 },
   { label: "On Air", href: "/broadcast", icon: Radio },
+  { label: "After the show", href: "/wrap", icon: HeartHandshake },
 ] as const
 
 function NavigationLinks({ mobile = false }: { mobile?: boolean }) {

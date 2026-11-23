@@ -93,6 +93,21 @@ export function PastoralCarePanel({ compact = false }: { compact?: boolean }) {
           </p>
         )}
 
+        {!compact && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/60 px-4 py-3 text-xs text-muted-foreground">
+            <span>
+              {care.floor ? `The missing list has counted since ${formatDate(care.floor)}. A week of silence after that puts someone here.` : "A week of silence puts someone here."}
+            </span>
+            <button
+              type="button"
+              onClick={() => { if (window.confirm("Start the missing list again from today? Nobody will show as missing until a week from now.")) void care.resetMissingList() }}
+              className="rounded-lg border px-3 py-1.5 font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Reset the missing list
+            </button>
+          </div>
+        )}
+
         {care.mia.length > 0 && (
           <div className="mt-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">

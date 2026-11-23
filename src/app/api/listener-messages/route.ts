@@ -2,7 +2,7 @@ import { cloudSaveStatus, getCloudSaveSql } from "@/lib/cloud-save-db"
 import { requireUser } from "@/lib/auth-db"
 import { bumpListenerLog } from "@/lib/listener-log-store"
 import { isMessageSource, isPronoun } from "@/lib/listener-messages-shared"
-import { deleteMessage, findMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
+import { deleteMessage, ensureProfile, findMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
 import { readVersionConfigured, writeReadVersion } from "@/lib/read-version"
 import { showDisplayNameFor } from "@/lib/show-session-store"
 
@@ -74,6 +74,7 @@ export async function POST(request: Request) {
     if (!message) return Response.json({ error: "The message did not save." }, { status: 500 })
     // Banking a message is hearing from them: the name log and "last heard" move too.
     await bumpListenerLog(sql, userId, { name, showId, showDate, source }).catch((error) => console.error("listener-messages: name log bump failed", error))
+    await ensureProfile(sql, userId, name).catch((error) => console.error("listener-messages: profile failed", error))
     return Response.json({ message, ai: readVersionConfigured(), readError: readError || null })
   } catch (error) {
     return Response.json({ error: `The message did not save: ${errorMessage(error)}` }, { status: 500 })

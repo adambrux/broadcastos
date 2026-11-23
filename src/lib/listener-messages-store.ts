@@ -1,4 +1,4 @@
-import { ensureListenerMessagesSchema, getCloudSaveSql, type CheckinRow, type ListenerMessageRow } from "@/lib/cloud-save-db"
+import { ensureListenerLogSchema, ensureListenerMessagesSchema, getCloudSaveSql, type CheckinRow, type ListenerMessageRow } from "@/lib/cloud-save-db"
 import { isMessageSource, isPronoun, type ListenerMessage } from "@/lib/listener-messages-shared"
 import { listenerNameKeyServer } from "@/lib/listener-log-store"
 
@@ -172,4 +172,15 @@ export async function showCountsFor(sql: BroadcastSql, userId: string, name: str
     GROUP BY show_id
   ` as { show_id: string; messages: number }[]
   return rows.map((row) => ({ showId: row.show_id, messages: row.messages }))
+}
+
+/** A banked message makes the person real: a profile row if they are new (v2.46). */
+export async function ensureProfile(sql: BroadcastSql, userId: string, name: string) {
+  await ensureListenerLogSchema(sql)
+  const clean = name.replace(/\s+/g, " ").trim()
+  await sql`
+    INSERT INTO broadcastos_listener_profiles (name_key, user_id, display_name)
+    VALUES (${listenerNameKeyServer(clean)}, ${userId}, ${clean})
+    ON CONFLICT (user_id, name_key) DO NOTHING
+  `
 }

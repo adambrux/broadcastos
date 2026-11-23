@@ -75,13 +75,19 @@ function daysSince(value: string) {
  * while they stay silent they resurface every three to four days so nobody
  * slips away unnoticed.
  */
-export function computeMia(totals: ListenerTotal[], profiles: ListenerProfile[]): MiaListener[] {
+export function computeMia(totals: ListenerTotal[], profiles: ListenerProfile[], floor?: string): MiaListener[] {
+  // The floor (v2.46): the missing list counts from this day. Everyone heard
+  // before it counts as heard ON it, and check-ins before it are forgotten, so
+  // a reset gives the whole family a clean week before anyone is missing.
+  const floorDay = floor && /^\d{4}-\d{2}-\d{2}$/.test(floor) ? floor : ""
   return totals
     .map((total) => {
       const key = listenerNameKey(total.name)
       const profile = profiles.find((item) => item.nameKey === key)
-      const daysQuiet = daysSince(total.lastHeard)
-      const checkinDays = profile?.lastCheckinAt ? daysSince(profile.lastCheckinAt) : null
+      const heard = floorDay && total.lastHeard < floorDay ? floorDay : total.lastHeard
+      const daysQuiet = daysSince(heard)
+      const checkinAt = profile?.lastCheckinAt && (!floorDay || profile.lastCheckinAt.slice(0, 10) >= floorDay) ? profile.lastCheckinAt : ""
+      const checkinDays = checkinAt ? daysSince(checkinAt) : null
       const checkedInSinceQuiet = checkinDays !== null && checkinDays < daysQuiet
       const needsCare = daysQuiet > 7 && (!checkedInSinceQuiet || (checkinDays !== null && checkinDays >= 3))
       return needsCare ? { name: total.name, nameKey: key, daysQuiet, lastHeard: total.lastHeard, totalMessages: total.totalMessages } : null
@@ -95,6 +101,7 @@ export function usePastoralCare() {
   const [totals, setTotals] = useState<ListenerTotal[]>([])
   const [profiles, setProfiles] = useState<ListenerProfile[]>([])
   const [notes, setNotes] = useState<ListenerNote[]>([])
+  const [floor, setFloor] = useState("")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -110,6 +117,7 @@ export function usePastoralCare() {
         if (profileData) {
           setProfiles(profileData.profiles ?? [])
           setNotes(profileData.notes ?? [])
+          if (typeof profileData.settings?.miaFloor === "string") setFloor(profileData.settings.miaFloor)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -144,7 +152,18 @@ export function usePastoralCare() {
     }).catch(() => {})
   }, [])
 
-  const mia = computeMia(totals, profiles)
+  /** Start the missing list again from a day (default: today). Nobody is missing until a week after it. */
+  const resetMissingList = useCallback(async (fromDay?: string) => {
+    const day = fromDay ?? new Date().toISOString().slice(0, 10)
+    setFloor(day)
+    await fetch("/api/listener-profiles", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resetMissing: true, floor: day }),
+    }).catch(() => {})
+  }, [])
+
+  const mia = computeMia(totals, profiles, floor)
   const prayerFollowUps = notes.filter((note) => note.tag === "prayer" && !note.followedUpAt)
   const followedUpPrayers = notes
     .filter((note) => note.tag === "prayer" && note.followedUpAt)
@@ -155,7 +174,7 @@ export function usePastoralCare() {
       ?? nameKey
   }, [profiles, totals])
 
-  return { loading, mia, prayerFollowUps, followedUpPrayers, checkIn, markFollowedUp, nameFor }
+  return { loading, mia, prayerFollowUps, followedUpPrayers, checkIn, markFollowedUp, nameFor, floor, resetMissingList, totals }
 }
 
 export function listenerNameKey(name: string) {

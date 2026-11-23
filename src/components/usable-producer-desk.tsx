@@ -35,6 +35,7 @@ import { ListenerMessagesPanel } from "@/components/listener-messages"
 import { ParkedPocketPanel } from "@/components/parked-pocket"
 import { ProducerLineBadge } from "@/components/producer-line-badge"
 import type { ParkedNote } from "@/lib/parked-notes-shared"
+import { estimateSeconds, formatClock, parseTargetSeconds, readingPace } from "@/lib/read-time"
 import {
   extractLinerLinksFromShowItems,
   weekStartFromDate,
@@ -496,6 +497,22 @@ export function UsableProducerDesk() {
 
   const show = studioShows[workspace.showId]
   const completed = workspace.items.filter((item) => item.done).length
+  // READING TIME (v2.46): the script's words at Adam's pace, against the target typed on the link.
+  const [pace, setPace] = useState(150)
+  useEffect(() => { setPace(readingPace()) }, [])
+  const linkSeconds = (item: StudioItem) => estimateSeconds([item.context, item.recap, item.script, item.cta, item.tease].join(" "), pace)
+  const hourTotals = useMemo(() => {
+    const totals = new Map<string, { talk: number; target: number; links: number }>()
+    for (const item of workspace.items) {
+      const key = item.hour || "This hour"
+      const entry = totals.get(key) ?? { talk: 0, target: 0, links: 0 }
+      entry.talk += estimateSeconds([item.context, item.recap, item.script, item.cta, item.tease].join(" "), pace)
+      entry.target += parseTargetSeconds(item.duration) ?? 0
+      entry.links += 1
+      totals.set(key, entry)
+    }
+    return [...totals.entries()]
+  }, [pace, workspace.items])
   const selectedReadiness = selected ? getContextFirstReadiness(selected, show.name) : null
   const readyLinks = workspace.items.filter((item) => getContextFirstReadiness(item, show.name).ready).length
 
@@ -837,6 +854,15 @@ export function UsableProducerDesk() {
             </div>
             <Button size="sm" variant="outline" className="rounded-xl" onClick={addItem}><Plus />Add item</Button>
           </div>
+          {hourTotals.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {hourTotals.map(([hour, total]) => (
+                <span key={hour} className={cn("inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-[11px] font-semibold", total.target && total.talk > total.target + 30 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-border/70 bg-white text-muted-foreground")} title="Talk time at your reading pace, against the targets typed on the links">
+                  {hour} · about {formatClock(total.talk)} of talk{total.target ? ` of ${formatClock(total.target)}` : ""} · {total.links} link{total.links === 1 ? "" : "s"}
+                </span>
+              ))}
+            </div>
+          )}
           {workspace.items.length === 0 ? (
             <button type="button" onClick={addItem} className="w-full rounded-[22px] border border-dashed bg-white p-8 text-center">
               <span className="mx-auto grid size-11 place-items-center rounded-2xl bg-brand-soft text-brand-indigo"><Plus className="size-5" /></span>
@@ -891,7 +917,7 @@ export function UsableProducerDesk() {
                       {item.done ? <Check className="size-3.5" /> : String(index + 1).padStart(2, "0")}
                     </span>
                       <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2"><span className="font-mono text-[10px] text-muted-foreground">{item.time || "No time"}</span><Badge variant="outline" className="text-[9px]">{item.type}</Badge>{item.hour && <Badge variant="outline" className="text-[9px]">{item.hour}</Badge>}{item.responseGate && <Badge className="bg-violet-50 text-violet-700 text-[9px]">Gate</Badge>}{isLinerLink(item) && <Badge className="bg-fuchsia-50 text-fuchsia-700 text-[9px]">Liner</Badge>}</span>
+                      <span className="flex flex-wrap items-center gap-2"><span className="font-mono text-[10px] text-muted-foreground">{item.time || "No time"}</span><Badge variant="outline" className="text-[9px]">{item.type}</Badge>{item.hour && <Badge variant="outline" className="text-[9px]">{item.hour}</Badge>}{item.responseGate && <Badge className="bg-violet-50 text-violet-700 text-[9px]">Gate</Badge>}{isLinerLink(item) && <Badge className="bg-fuchsia-50 text-fuchsia-700 text-[9px]">Liner</Badge>}{(() => { const talk = linkSeconds(item); const target = parseTargetSeconds(item.duration); return <Badge variant="outline" className={cn("text-[9px] font-mono", target !== null && talk > target + 10 && "border-amber-300 bg-amber-50 text-amber-800")} title="Reading time at your pace, against the target">{formatClock(talk)}{target !== null ? ` / ${formatClock(target)}` : ""}</Badge> })()}</span>
                       <span className="mt-1 block truncate text-sm font-semibold">{item.title}</span>
                       <span className={cn("mt-1 inline-flex items-center gap-1 text-[10px] font-semibold", readiness.ready ? "text-success" : "text-amber-700")}>
                         {readiness.ready ? <Check className="size-3" /> : <CircleAlert className="size-3" />}
