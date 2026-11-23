@@ -2,6 +2,14 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.40 · In the pocket · 23 November 2026
+
+- The Pocket: mid-show, a WhatsApp or a thought that belongs later can be parked in two taps without touching the script. On Air has a Pocket button next to Flag and Edit; it opens a side sheet with a paste box, where it came from (WhatsApp, Text, Instagram, Email, Idea), who sent it, and Later today or Another day. Parked notes show on this device straight away, save online to the account, and wait in a queue if the iPad is offline or signed out.
+- The Producer Desk has the same Pocket as a card under Saved shows, with "Put in this link": the note goes to the end of the selected link's Moment marked [FROM THE POCKET], and is ticked off as used. Used notes stay for a week with "Put back".
+- The producer can read the Pocket too (GET /api/inbox/parked with the inbox token), so a message parked for another day can be written into the next plan.
+- Producer line badge on the Desk (beside Saved shows) and On Air (top of the side column): whether the producer's line into the app is switched on, and the last plan that arrived through it with its time. Checks on load, on focus and every minute; tap to check now.
+- The inbox's auth and account lookup moved into one shared library used by both inbox routes.
+
 ## v2.39 · Straight in · 23 November 2026
 
 - A finished show plan can now be sent straight into BroadcastOS from the producer's machine, with no pasting. The new inbox (POST /api/inbox/show-plan) takes the same plain text the Import Centre reads, runs it through the same parser, saves it as a show in Saved Shows and archives it to the Presenter Hub with the liner reads counted, exactly as Save online does.

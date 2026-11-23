@@ -33,6 +33,8 @@ import { Input } from "@/components/ui/input"
 import { StudioLivePill } from "@/components/app-shell"
 import { openAppSplash } from "@/components/app-splash-screen"
 import { GameScoreboard } from "@/components/game-scoreboard"
+import { ParkedPocketButton } from "@/components/parked-pocket"
+import { ProducerLineBadge } from "@/components/producer-line-badge"
 import { LaunchSequenceBody, LaunchSequenceIndicator } from "@/components/show-launch-sequence"
 import { StudioAmbient } from "@/components/studio-motion"
 import { useLaunchSequence } from "@/lib/launch-sequence"
@@ -753,6 +755,7 @@ export function UsableOnAir() {
                       ))}
                     </div>
                   )}
+                  {!editing && <ParkedPocketButton showId={workspace.showId} showDate={showDate} />}
                   {prompter === "off" && !editing && (
                     <>
                       <Button
@@ -937,6 +940,7 @@ export function UsableOnAir() {
           </section>
 
           <aside className="space-y-4">
+            <ProducerLineBadge dark className="w-full" />
             <GameScoreboard showId={workspace.showId} showDate={showDate} suggest={listeners.suggestNames} />
 
             <div className="rounded-[22px] border border-white/10 bg-white/[0.045] p-5">

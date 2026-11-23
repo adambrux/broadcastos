@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import {
+  Inbox,
   ArrowDown,
   ArrowUp,
   Check,
@@ -29,6 +30,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { StudioAmbient } from "@/components/studio-motion"
+import { ParkedPocketPanel } from "@/components/parked-pocket"
+import { ProducerLineBadge } from "@/components/producer-line-badge"
+import type { ParkedNote } from "@/lib/parked-notes-shared"
 import {
   extractLinerLinksFromShowItems,
   weekStartFromDate,
@@ -385,6 +389,15 @@ export function UsableProducerDesk() {
     setSelectedId("")
   }
 
+  /** From the Pocket: a parked message goes to the end of the selected link's Moment, marked so it reads as a message. */
+  function dropNoteIntoSelected(note: ParkedNote) {
+    if (!selected) return
+    const base = selected.script.trimEnd()
+    const from = note.sender ? ` from ${note.sender}` : ""
+    updateItem(selected.id, "script", `${base}${base ? "\n\n" : ""}[FROM THE POCKET${from}] ${note.text}`)
+    setNotice(`Parked message added to "${selected.title}".`)
+  }
+
   function updateItem(id: string, key: keyof StudioItem, value: string | boolean) {
     saveStudioWorkspace({
       ...workspace,
@@ -512,7 +525,10 @@ export function UsableProducerDesk() {
         <CardContent className="p-5 sm:p-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-2xl">
-              <Badge className="bg-ink text-white"><Cloud />Saved shows</Badge>
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge className="bg-ink text-white"><Cloud />Saved shows</Badge>
+                <ProducerLineBadge />
+              </div>
               <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">Save this show online, open it anywhere.</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Build the show here, save it online, then load it on the studio iPad or any other device.
@@ -609,6 +625,22 @@ export function UsableProducerDesk() {
                 Save the current running order online, or refresh after saving from another device.
               </div>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="studio-card-lift overflow-hidden rounded-[24px] py-0 shadow-card">
+        <CardContent className="p-5 sm:p-6">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]">
+            <div>
+              <Badge className="bg-ink text-white"><Inbox />Pocket</Badge>
+              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">Parked on air, ready when you are.</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Anything parked On Air lands here: a WhatsApp for later in the show, or one for another day. Put it straight into the selected link, or leave it for the producer to write into the next plan.
+              </p>
+              {selected && <p className="mt-3 text-xs font-semibold text-brand-indigo">Selected link: {selected.title}</p>}
+            </div>
+            <ParkedPocketPanel showId={workspace.showId} showDate={workspace.date || new Date().toISOString().slice(0, 10)} onDropIntoLink={dropNoteIntoSelected} />
           </div>
         </CardContent>
       </Card>

@@ -264,6 +264,47 @@ export async function ensureScriptIssuesSchema(sql: BroadcastSql) {
   `
 }
 
+export type ParkedNoteRow = {
+  id: string
+  text: string
+  source: string
+  sender: string
+  when_for: string
+  show_id: string
+  show_date: string
+  created_at: string | Date
+  used_at: string | Date | null
+}
+
+let parkedNotesSchemaReady = false
+
+/** The Pocket (v2.40): things parked on air for later, per account. */
+export async function ensureParkedNotesSchema(sql: BroadcastSql) {
+  if (parkedNotesSchemaReady) return
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS broadcastos_parked_notes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      text TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'whatsapp',
+      sender TEXT NOT NULL DEFAULT '',
+      when_for TEXT NOT NULL DEFAULT 'later-today',
+      show_id TEXT NOT NULL DEFAULT '',
+      show_date TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      used_at TIMESTAMPTZ
+    )
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS broadcastos_parked_notes_user_idx
+    ON broadcastos_parked_notes (user_id, used_at, created_at DESC)
+  `
+
+  parkedNotesSchemaReady = true
+}
+
 export async function ensureListenerLogSchema(sql: BroadcastSql) {
   await sql`
     CREATE TABLE IF NOT EXISTS broadcastos_listener_log (
