@@ -33,6 +33,8 @@ function timeLabel(iso: string) {
 
 type CardActions = {
   saveRead: (id: string, readVersion: string) => Promise<void>
+  /** Present only when the app can write reads itself. */
+  rewrite?: (id: string) => Promise<void>
   markUsed: (id: string, used: boolean) => Promise<void>
   remove: (id: string) => Promise<void>
   copy: (text: string) => Promise<void>
@@ -47,6 +49,7 @@ function MessageCard({ message, dark, actions }: { message: ListenerMessage; dar
   const [draft, setDraft] = useState(message.readVersion ?? "")
   const [showRaw, setShowRaw] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [rewriting, setRewriting] = useState(false)
   const used = Boolean(message.usedAt)
   const readText = message.readVersion ?? ""
   const copyText = readText || message.raw
@@ -120,6 +123,11 @@ function MessageCard({ message, dark, actions }: { message: ListenerMessage; dar
             <Pencil className="size-3.5" />Edit
           </Button>
         )}
+        {!editing && !used && actions.rewrite && (
+          <Button size="sm" variant="outline" className={cn("h-8 rounded-lg", dark && outlineDark)} disabled={rewriting} onClick={() => { setRewriting(true); void actions.rewrite?.(message.id).finally(() => setRewriting(false)) }}>
+            {rewriting ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}{readText ? "Write it again" : "Write it"}
+          </Button>
+        )}
         {used ? (
           <Button size="sm" variant="outline" className={cn("h-8 rounded-lg", dark && outlineDark)} onClick={() => void actions.markUsed(message.id, false)}>
             <RotateCcw className="size-3.5" />Put back
@@ -178,6 +186,7 @@ export function ListenerMessagesPanel({ showId, showDate, dark = false, onDropIn
 
   const actions: CardActions = {
     saveRead: async (id, readVersion) => { try { await bank.patch(id, { readVersion }); say("Read version saved.") } catch (error) { say(error instanceof Error ? error.message : "Could not save.", 5000) } },
+    rewrite: bank.ai ? async (id) => { try { await bank.patch(id, { rewrite: true }); say("Written again.") } catch (error) { say(error instanceof Error ? error.message : "Could not write it again.", 5000) } } : undefined,
     markUsed: async (id, used) => { try { await bank.patch(id, { used }) } catch (error) { say(error instanceof Error ? error.message : "Could not update.", 5000) } },
     remove: async (id) => { await bank.remove(id) },
     copy: async (text) => { try { await navigator.clipboard.writeText(text); say("Copied.") } catch { say("Could not copy on this device.") } },
@@ -233,7 +242,7 @@ export function ListenerMessagesPanel({ showId, showDate, dark = false, onDropIn
         <p className={cn("text-[10px] font-semibold uppercase tracking-[0.14em]", dark ? "text-white/40" : "text-muted-foreground")}>Recent · {bank.messages.length}</p>
         {bank.messages.length ? (
           <div className="mt-2 space-y-2">
-            {bank.messages.map((message) => <MessageCard key={`${message.id}-${message.readStatus}`} message={message} dark={dark} actions={actions} />)}
+            {bank.messages.map((message) => <MessageCard key={`${message.id}-${message.readStatus}-${(message.readVersion ?? "").length}`} message={message} dark={dark} actions={actions} />)}
           </div>
         ) : (
           <p className={cn("mt-2 rounded-xl border border-dashed p-3 text-xs leading-5", dark ? "border-white/10 text-white/35" : "border-border text-muted-foreground")}>

@@ -61,6 +61,18 @@ export async function listMessages(sql: BroadcastSql, userId: string, options: {
   return rows.map(messageFromRow)
 }
 
+export async function findMessage(sql: BroadcastSql, userId: string, id: string) {
+  await ensureListenerMessagesSchema(sql)
+  const rows = await sql`
+    SELECT id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, created_at, used_at
+    FROM broadcastos_listener_messages
+    WHERE id = ${id} AND user_id = ${userId}
+    LIMIT 1
+  ` as ListenerMessageRow[]
+  const row = rows.at(0)
+  return row ? messageFromRow(row) : null
+}
+
 export async function insertMessage(
   sql: BroadcastSql,
   userId: string,

@@ -54,7 +54,7 @@ export function useListenerMessages(options: { name?: string; auto?: boolean } =
     return { message: data.message, readError: data.readError ?? null }
   }, [])
 
-  const patch = useCallback(async (id: string, body: { readVersion?: string; used?: boolean }) => {
+  const patch = useCallback(async (id: string, body: { readVersion?: string; used?: boolean; rewrite?: boolean }) => {
     const response = await fetch("/api/listener-messages", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

@@ -2,7 +2,7 @@ import { cloudSaveStatus, getCloudSaveSql } from "@/lib/cloud-save-db"
 import { requireUser } from "@/lib/auth-db"
 import { bumpListenerLog } from "@/lib/listener-log-store"
 import { isMessageSource } from "@/lib/listener-messages-shared"
-import { deleteMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
+import { deleteMessage, findMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
 import { readVersionConfigured, writeReadVersion } from "@/lib/read-version"
 import { showDisplayNameFor } from "@/lib/show-session-store"
 
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   let readError = ""
   if (readVersionConfigured()) {
     try {
-      readVersion = await writeReadVersion({ name, raw, showName: showDisplayNameFor(showId) })
+      readVersion = await writeReadVersion({ name, raw, showName: showDisplayNameFor(showId), source })
     } catch (error) {
       console.error("listener-messages: read version failed", error)
       readError = errorMessage(error)
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   }
 }
 
-type PatchBody = { id?: unknown; readVersion?: unknown; used?: unknown }
+type PatchBody = { id?: unknown; readVersion?: unknown; used?: unknown; rewrite?: unknown }
 
 export async function PATCH(request: Request) {
   const sql = getCloudSaveSql()
@@ -93,6 +93,16 @@ export async function PATCH(request: Request) {
   if (!id) return Response.json({ error: "Which message?" }, { status: 400 })
 
   try {
+    // "Write it again": the same message back through the current rules.
+    if (body?.rewrite === true) {
+      if (!readVersionConfigured()) return Response.json({ error: "The app can't write reads yet: the AI key isn't set." }, { status: 503 })
+      const existing = await findMessage(sql, auth.user.id, id)
+      if (!existing) return Response.json({ error: "That message is not in your bank." }, { status: 404 })
+      const rewritten = await writeReadVersion({ name: existing.name, raw: existing.raw, showName: showDisplayNameFor(existing.showId), source: existing.source })
+      if (!rewritten) return Response.json({ error: "The read did not come back this time. Try again in a moment." }, { status: 502 })
+      const message = await updateMessage(sql, auth.user.id, id, { readVersion: rewritten })
+      return Response.json({ message })
+    }
     const message = await updateMessage(sql, auth.user.id, id, {
       readVersion: typeof body?.readVersion === "string" ? body.readVersion.slice(0, 2000) : undefined,
       used: typeof body?.used === "boolean" ? body.used : undefined,

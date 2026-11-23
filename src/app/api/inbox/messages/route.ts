@@ -2,7 +2,7 @@ import { getCloudSaveSql } from "@/lib/cloud-save-db"
 import { inboxRefusal, resolveInboxUser } from "@/lib/inbox-auth"
 import { bumpListenerLog } from "@/lib/listener-log-store"
 import { isMessageSource } from "@/lib/listener-messages-shared"
-import { deleteMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
+import { deleteMessage, findMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
 import { readVersionConfigured, writeReadVersion } from "@/lib/read-version"
 import { showDisplayNameFor } from "@/lib/show-session-store"
 
@@ -45,9 +45,19 @@ export async function POST(request: Request) {
   const owner = await resolveInboxUser(sql).catch(() => null)
   if (!owner) return Response.json({ error: "There is no account for the inbox to write to yet." }, { status: 503 })
 
-  const body = (await request.json().catch(() => null)) as { id?: unknown; readVersion?: unknown; name?: unknown; raw?: unknown; source?: unknown; showId?: unknown; showDate?: unknown } | null
+  const body = (await request.json().catch(() => null)) as { id?: unknown; readVersion?: unknown; rewrite?: unknown; name?: unknown; raw?: unknown; source?: unknown; showId?: unknown; showDate?: unknown } | null
   const id = typeof body?.id === "string" ? body.id.trim() : ""
   const readVersion = typeof body?.readVersion === "string" ? body.readVersion.trim() : ""
+
+  if (id && body?.rewrite === true) {
+    if (!readVersionConfigured()) return Response.json({ error: "The AI key is not set on the server." }, { status: 503 })
+    const existing = await findMessage(sql, owner.id, id)
+    if (!existing) return Response.json({ error: "No message with that id." }, { status: 404 })
+    const rewritten = await writeReadVersion({ name: existing.name, raw: existing.raw, showName: showDisplayNameFor(existing.showId), source: existing.source })
+    if (!rewritten) return Response.json({ error: "The read did not come back." }, { status: 502 })
+    const message = await updateMessage(sql, owner.id, id, { readVersion: rewritten })
+    return Response.json({ message })
+  }
 
   if (id) {
     if (!readVersion) return Response.json({ error: "Send the message id and the read version." }, { status: 400 })
@@ -68,7 +78,7 @@ export async function POST(request: Request) {
   let readError: string | null = null
   if (readVersionConfigured()) {
     try {
-      written = await writeReadVersion({ name, raw, showName: showDisplayNameFor(showId) })
+      written = await writeReadVersion({ name, raw, showName: showDisplayNameFor(showId), source })
     } catch (error) {
       readError = error instanceof Error ? error.message : "unknown error"
       console.error("inbox messages: read version failed", error)

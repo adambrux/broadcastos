@@ -2,6 +2,12 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.44 · Say it like Adam · 23 November 2026
+
+- The read versions now sound like Adam talking about the person, not a bulletin. Adam's own rewrite of the first test is the worked example the app copies every time: the name once and then she or he, "has messaged in on WhatsApp today and she says…" in the opener, her own words folded into the sentence with no quotation marks, connected spoken sentences, fifty to eighty words.
+- The read knows how the message arrived (WhatsApp, text, Instagram, email) so the opener is right.
+- Write it again: every banked message has a button to run it back through the rules when a read lands wrong, and the producer can do the same through the inbox.
+
 ## v2.43 · No trace · 23 November 2026
 
 - Deleting a banked message also removes the name-log entry it created when it was the only message from that person on that show day, so a paste by mistake or a test message leaves nothing behind in the regulars list or the missing list.
