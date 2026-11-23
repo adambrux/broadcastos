@@ -1,7 +1,7 @@
 import { cloudSaveStatus, getCloudSaveSql } from "@/lib/cloud-save-db"
 import { requireUser } from "@/lib/auth-db"
 import { bumpListenerLog } from "@/lib/listener-log-store"
-import { isMessageSource } from "@/lib/listener-messages-shared"
+import { isMessageSource, isPronoun } from "@/lib/listener-messages-shared"
 import { deleteMessage, findMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
 import { readVersionConfigured, writeReadVersion } from "@/lib/read-version"
 import { showDisplayNameFor } from "@/lib/show-session-store"
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   }
 }
 
-type PostBody = { name?: unknown; raw?: unknown; source?: unknown; showId?: unknown; showDate?: unknown }
+type PostBody = { name?: unknown; raw?: unknown; source?: unknown; showId?: unknown; showDate?: unknown; pronoun?: unknown }
 
 export async function POST(request: Request) {
   const sql = getCloudSaveSql()
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
   const name = typeof body?.name === "string" ? body.name.replace(/\s+/g, " ").trim().slice(0, 120) : ""
   const raw = typeof body?.raw === "string" ? body.raw.trim().slice(0, 6000) : ""
   const source = isMessageSource(body?.source) ? body.source : "whatsapp"
+  const pronoun = isPronoun(body?.pronoun) ? body.pronoun : ""
   const showId = typeof body?.showId === "string" && body.showId ? body.showId.slice(0, 40) : "afternoons"
   const showDate = typeof body?.showDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.showDate) ? body.showDate : new Date().toISOString().slice(0, 10)
 
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
   let readError = ""
   if (readVersionConfigured()) {
     try {
-      readVersion = await writeReadVersion({ name, raw, showName: showDisplayNameFor(showId), source })
+      readVersion = await writeReadVersion({ name, raw, showName: showDisplayNameFor(showId), source, pronoun })
     } catch (error) {
       console.error("listener-messages: read version failed", error)
       readError = errorMessage(error)
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const message = await insertMessage(sql, userId, { name, source, raw, readVersion, showId, showDate })
+    const message = await insertMessage(sql, userId, { name, source, raw, readVersion, showId, showDate, pronoun })
     if (!message) return Response.json({ error: "The message did not save." }, { status: 500 })
     // Banking a message is hearing from them: the name log and "last heard" move too.
     await bumpListenerLog(sql, userId, { name, showId, showDate, source }).catch((error) => console.error("listener-messages: name log bump failed", error))
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
   }
 }
 
-type PatchBody = { id?: unknown; readVersion?: unknown; used?: unknown; rewrite?: unknown }
+type PatchBody = { id?: unknown; readVersion?: unknown; used?: unknown; rewrite?: unknown; pronoun?: unknown }
 
 export async function PATCH(request: Request) {
   const sql = getCloudSaveSql()
@@ -98,14 +99,16 @@ export async function PATCH(request: Request) {
       if (!readVersionConfigured()) return Response.json({ error: "The app can't write reads yet: the AI key isn't set." }, { status: 503 })
       const existing = await findMessage(sql, auth.user.id, id)
       if (!existing) return Response.json({ error: "That message is not in your bank." }, { status: 404 })
-      const rewritten = await writeReadVersion({ name: existing.name, raw: existing.raw, showName: showDisplayNameFor(existing.showId), source: existing.source })
+      const pronoun = isPronoun(body?.pronoun) ? body.pronoun : existing.pronoun
+      const rewritten = await writeReadVersion({ name: existing.name, raw: existing.raw, showName: showDisplayNameFor(existing.showId), source: existing.source, pronoun })
       if (!rewritten) return Response.json({ error: "The read did not come back this time. Try again in a moment." }, { status: 502 })
-      const message = await updateMessage(sql, auth.user.id, id, { readVersion: rewritten })
+      const message = await updateMessage(sql, auth.user.id, id, { readVersion: rewritten, pronoun })
       return Response.json({ message })
     }
     const message = await updateMessage(sql, auth.user.id, id, {
       readVersion: typeof body?.readVersion === "string" ? body.readVersion.slice(0, 2000) : undefined,
       used: typeof body?.used === "boolean" ? body.used : undefined,
+      pronoun: isPronoun(body?.pronoun) ? body.pronoun : undefined,
     })
     if (!message) return Response.json({ error: "That message is not in your bank." }, { status: 404 })
     return Response.json({ message })

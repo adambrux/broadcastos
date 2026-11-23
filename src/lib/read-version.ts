@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk"
-import { messageSourceLabels, type MessageSource } from "@/lib/listener-messages-shared"
+import { messageSourceLabels, type MessageSource, type Pronoun } from "@/lib/listener-messages-shared"
 
 /**
  * The on-air read of a listener's message (v2.41, voice fixed v2.44 from
@@ -42,7 +42,7 @@ const arrivedBy: Record<MessageSource, string> = {
   email: "email (so: has emailed in)",
 }
 
-export async function writeReadVersion(input: { name: string; raw: string; showName: string; source?: MessageSource }): Promise<string | null> {
+export async function writeReadVersion(input: { name: string; raw: string; showName: string; source?: MessageSource; pronoun?: Pronoun }): Promise<string | null> {
   if (!readVersionConfigured()) return null
   const client = new Anthropic()
   const source = input.source ?? "whatsapp"
@@ -57,7 +57,7 @@ export async function writeReadVersion(input: { name: string; raw: string; showN
       messages: [
         {
           role: "user",
-          content: `Listener: ${input.name}\nGot in touch by: ${arrivedBy[source] ?? messageSourceLabels[source]}\nShow: ${input.showName}\n\nMessage:\n${input.raw}`,
+          content: `Listener: ${input.name}\nGot in touch by: ${arrivedBy[source] ?? messageSourceLabels[source]}\nShow: ${input.showName}${input.pronoun ? `\nRefer to them as: ${input.pronoun} (Adam knows them)` : ""}\n\nMessage:\n${input.raw}`,
         },
       ],
     },

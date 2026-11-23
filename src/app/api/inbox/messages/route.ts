@@ -1,7 +1,7 @@
 import { getCloudSaveSql } from "@/lib/cloud-save-db"
 import { inboxRefusal, resolveInboxUser } from "@/lib/inbox-auth"
 import { bumpListenerLog } from "@/lib/listener-log-store"
-import { isMessageSource } from "@/lib/listener-messages-shared"
+import { isMessageSource, isPronoun } from "@/lib/listener-messages-shared"
 import { deleteMessage, findMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
 import { readVersionConfigured, writeReadVersion } from "@/lib/read-version"
 import { showDisplayNameFor } from "@/lib/show-session-store"
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   const owner = await resolveInboxUser(sql).catch(() => null)
   if (!owner) return Response.json({ error: "There is no account for the inbox to write to yet." }, { status: 503 })
 
-  const body = (await request.json().catch(() => null)) as { id?: unknown; readVersion?: unknown; rewrite?: unknown; name?: unknown; raw?: unknown; source?: unknown; showId?: unknown; showDate?: unknown } | null
+  const body = (await request.json().catch(() => null)) as { id?: unknown; readVersion?: unknown; rewrite?: unknown; name?: unknown; raw?: unknown; source?: unknown; showId?: unknown; showDate?: unknown; pronoun?: unknown } | null
   const id = typeof body?.id === "string" ? body.id.trim() : ""
   const readVersion = typeof body?.readVersion === "string" ? body.readVersion.trim() : ""
 
@@ -53,9 +53,10 @@ export async function POST(request: Request) {
     if (!readVersionConfigured()) return Response.json({ error: "The AI key is not set on the server." }, { status: 503 })
     const existing = await findMessage(sql, owner.id, id)
     if (!existing) return Response.json({ error: "No message with that id." }, { status: 404 })
-    const rewritten = await writeReadVersion({ name: existing.name, raw: existing.raw, showName: showDisplayNameFor(existing.showId), source: existing.source })
+    const pronoun = isPronoun(body?.pronoun) ? body.pronoun : existing.pronoun
+    const rewritten = await writeReadVersion({ name: existing.name, raw: existing.raw, showName: showDisplayNameFor(existing.showId), source: existing.source, pronoun })
     if (!rewritten) return Response.json({ error: "The read did not come back." }, { status: 502 })
-    const message = await updateMessage(sql, owner.id, id, { readVersion: rewritten })
+    const message = await updateMessage(sql, owner.id, id, { readVersion: rewritten, pronoun })
     return Response.json({ message })
   }
 
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
   const raw = typeof body?.raw === "string" ? body.raw.trim().slice(0, 6000) : ""
   if (!name || !raw) return Response.json({ error: "Send the name and the message (or an id with a read version)." }, { status: 400 })
   const source = isMessageSource(body?.source) ? body.source : "whatsapp"
+  const pronoun = isPronoun(body?.pronoun) ? body.pronoun : ""
   const showId = typeof body?.showId === "string" && body.showId ? body.showId.slice(0, 40) : "afternoons"
   const showDate = typeof body?.showDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.showDate) ? body.showDate : new Date().toISOString().slice(0, 10)
 
@@ -78,13 +80,13 @@ export async function POST(request: Request) {
   let readError: string | null = null
   if (readVersionConfigured()) {
     try {
-      written = await writeReadVersion({ name, raw, showName: showDisplayNameFor(showId), source })
+      written = await writeReadVersion({ name, raw, showName: showDisplayNameFor(showId), source, pronoun })
     } catch (error) {
       readError = error instanceof Error ? error.message : "unknown error"
       console.error("inbox messages: read version failed", error)
     }
   }
-  const message = await insertMessage(sql, owner.id, { name, source, raw, readVersion: written, showId, showDate })
+  const message = await insertMessage(sql, owner.id, { name, source, raw, readVersion: written, showId, showDate, pronoun })
   if (!message) return Response.json({ error: "The message did not save." }, { status: 500 })
   await bumpListenerLog(sql, owner.id, { name, showId, showDate, source }).catch((error) => console.error("inbox messages: name log bump failed", error))
   return Response.json({ message, ai: readVersionConfigured(), readError })

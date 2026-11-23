@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useListenerMessages } from "@/lib/listener-messages"
-import { messageSourceLabels, messageSources, type ListenerMessage, type MessageSource } from "@/lib/listener-messages-shared"
+import { messageSourceLabels, messageSources, pronounLabels, pronounOptions, type ListenerMessage, type MessageSource, type Pronoun } from "@/lib/listener-messages-shared"
 import { useParkedNotes } from "@/lib/parked-notes"
 import { cn } from "@/lib/utils"
 
@@ -34,7 +34,7 @@ function timeLabel(iso: string) {
 type CardActions = {
   saveRead: (id: string, readVersion: string) => Promise<void>
   /** Present only when the app can write reads itself. */
-  rewrite?: (id: string) => Promise<void>
+  rewrite?: (id: string, pronoun: Pronoun) => Promise<void>
   markUsed: (id: string, used: boolean) => Promise<void>
   remove: (id: string) => Promise<void>
   copy: (text: string) => Promise<void>
@@ -50,6 +50,7 @@ function MessageCard({ message, dark, actions }: { message: ListenerMessage; dar
   const [showRaw, setShowRaw] = useState(false)
   const [saving, setSaving] = useState(false)
   const [rewriting, setRewriting] = useState(false)
+  const [pronoun, setPronoun] = useState<Pronoun>(message.pronoun)
   const used = Boolean(message.usedAt)
   const readText = message.readVersion ?? ""
   const copyText = readText || message.raw
@@ -124,9 +125,18 @@ function MessageCard({ message, dark, actions }: { message: ListenerMessage; dar
           </Button>
         )}
         {!editing && !used && actions.rewrite && (
-          <Button size="sm" variant="outline" className={cn("h-8 rounded-lg", dark && outlineDark)} disabled={rewriting} onClick={() => { setRewriting(true); void actions.rewrite?.(message.id).finally(() => setRewriting(false)) }}>
-            {rewriting ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}{readText ? "Write it again" : "Write it"}
-          </Button>
+          <>
+            <span className={cn("inline-flex rounded-lg border p-0.5", dark ? "border-white/10" : "border-input")} role="group" aria-label="She, he or they">
+              {pronounOptions.filter((option) => option !== "").map((option) => (
+                <button key={option} type="button" aria-pressed={pronoun === option} onClick={() => setPronoun(pronoun === option ? "" : option)} className={cn("min-h-7 rounded-md px-2 text-[11px] font-semibold", pronoun === option ? (dark ? "bg-white text-ink" : "bg-ink text-white") : (dark ? "text-white/50" : "text-muted-foreground"))}>
+                  {pronounLabels[option]}
+                </button>
+              ))}
+            </span>
+            <Button size="sm" variant="outline" className={cn("h-8 rounded-lg", dark && outlineDark)} disabled={rewriting} onClick={() => { setRewriting(true); void actions.rewrite?.(message.id, pronoun).finally(() => setRewriting(false)) }}>
+              {rewriting ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}{readText ? "Write it again" : "Write it"}
+            </Button>
+          </>
         )}
         {used ? (
           <Button size="sm" variant="outline" className={cn("h-8 rounded-lg", dark && outlineDark)} onClick={() => void actions.markUsed(message.id, false)}>
@@ -159,6 +169,7 @@ export function ListenerMessagesPanel({ showId, showDate, dark = false, onDropIn
   const [name, setName] = useState("")
   const [raw, setRaw] = useState("")
   const [source, setSource] = useState<MessageSource>("whatsapp")
+  const [pronoun, setPronoun] = useState<Pronoun>("")
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState("")
 
@@ -171,7 +182,7 @@ export function ListenerMessagesPanel({ showId, showDate, dark = false, onDropIn
     if (!name.trim() || !raw.trim() || busy) return
     setBusy(true)
     try {
-      const { message, readError } = await bank.add({ name: name.trim(), raw: raw.trim(), source, showId, showDate })
+      const { message, readError } = await bank.add({ name: name.trim(), raw: raw.trim(), source, pronoun, showId, showDate })
       setRaw("")
       setName("")
       if (message.readVersion) say("Banked, and the read version is ready.")
@@ -186,7 +197,7 @@ export function ListenerMessagesPanel({ showId, showDate, dark = false, onDropIn
 
   const actions: CardActions = {
     saveRead: async (id, readVersion) => { try { await bank.patch(id, { readVersion }); say("Read version saved.") } catch (error) { say(error instanceof Error ? error.message : "Could not save.", 5000) } },
-    rewrite: bank.ai ? async (id) => { try { await bank.patch(id, { rewrite: true }); say("Written again.") } catch (error) { say(error instanceof Error ? error.message : "Could not write it again.", 5000) } } : undefined,
+    rewrite: bank.ai ? async (id, who) => { try { await bank.patch(id, { rewrite: true, pronoun: who }); say("Written again.") } catch (error) { say(error instanceof Error ? error.message : "Could not write it again.", 5000) } } : undefined,
     markUsed: async (id, used) => { try { await bank.patch(id, { used }) } catch (error) { say(error instanceof Error ? error.message : "Could not update.", 5000) } },
     remove: async (id) => { await bank.remove(id) },
     copy: async (text) => { try { await navigator.clipboard.writeText(text); say("Copied.") } catch { say("Could not copy on this device.") } },
@@ -220,6 +231,13 @@ export function ListenerMessagesPanel({ showId, showDate, dark = false, onDropIn
           {messageSources.map((option) => (
             <button key={option} type="button" aria-pressed={source === option} onClick={() => setSource(option)} className={chip(source === option)}>
               {messageSourceLabels[option]}
+            </button>
+          ))}
+        </div>
+        <div className={cn("inline-flex w-full rounded-xl border p-1", dark ? "border-white/10 bg-black/20" : "border-input bg-muted/40")} role="group" aria-label="She, he or they">
+          {pronounOptions.map((option) => (
+            <button key={option || "auto"} type="button" aria-pressed={pronoun === option} onClick={() => setPronoun(option)} className={chip(pronoun === option)}>
+              {pronounLabels[option]}
             </button>
           ))}
         </div>

@@ -18,6 +18,15 @@ export const messageSourceLabels: Record<MessageSource, string> = {
 
 export type ReadStatus = "pending" | "ready"
 
+/** How the read refers to the person. Empty means the app decides from the message. */
+export const pronounOptions = ["", "she", "he", "they"] as const
+export type Pronoun = (typeof pronounOptions)[number]
+export const pronounLabels: Record<Pronoun, string> = { "": "App decides", she: "She", he: "He", they: "They" }
+
+export function isPronoun(value: unknown): value is Pronoun {
+  return typeof value === "string" && (pronounOptions as readonly string[]).includes(value)
+}
+
 export type ListenerMessage = {
   id: string
   nameKey: string
@@ -29,6 +38,7 @@ export type ListenerMessage = {
   readStatus: ReadStatus
   showId: string
   showDate: string
+  pronoun: Pronoun
   createdAt: string
   usedAt: string | null
 }

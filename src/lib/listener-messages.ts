@@ -1,11 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import type { ListenerMessage, MessageSource } from "@/lib/listener-messages-shared"
+import type { ListenerMessage, MessageSource, Pronoun } from "@/lib/listener-messages-shared"
 
 /** THE MESSAGE BANK on the client (v2.41): recent messages, paste one in, fix a read, tick it used. */
 
-type AddInput = { name: string; raw: string; source: MessageSource; showId: string; showDate: string }
+type AddInput = { name: string; raw: string; source: MessageSource; pronoun?: Pronoun; showId: string; showDate: string }
 
 export function useListenerMessages(options: { name?: string; auto?: boolean } = {}) {
   const [messages, setMessages] = useState<ListenerMessage[]>([])
@@ -54,7 +54,7 @@ export function useListenerMessages(options: { name?: string; auto?: boolean } =
     return { message: data.message, readError: data.readError ?? null }
   }, [])
 
-  const patch = useCallback(async (id: string, body: { readVersion?: string; used?: boolean; rewrite?: boolean }) => {
+  const patch = useCallback(async (id: string, body: { readVersion?: string; used?: boolean; rewrite?: boolean; pronoun?: Pronoun }) => {
     const response = await fetch("/api/listener-messages", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

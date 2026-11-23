@@ -2,6 +2,10 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.45 · She, he or they · 23 November 2026
+
+- Tell the read how to refer to the person. The paste form has She, He, They or App decides; a message from someone Adam knows gets the right word first time instead of a careful "they". The choice is kept on the message and used again by Write it again, where it can also be changed.
+
 ## v2.44 · Say it like Adam · 23 November 2026
 
 - The read versions now sound like Adam talking about the person, not a bulletin. Adam's own rewrite of the first test is the worked example the app copies every time: the name once and then she or he, "has messaged in on WhatsApp today and she says…" in the opener, her own words folded into the sentence with no quotation marks, connected spoken sentences, fifty to eighty words.

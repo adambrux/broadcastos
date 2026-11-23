@@ -1,5 +1,5 @@
 import { ensureListenerMessagesSchema, getCloudSaveSql, type CheckinRow, type ListenerMessageRow } from "@/lib/cloud-save-db"
-import { isMessageSource, type ListenerMessage } from "@/lib/listener-messages-shared"
+import { isMessageSource, isPronoun, type ListenerMessage } from "@/lib/listener-messages-shared"
 import { listenerNameKeyServer } from "@/lib/listener-log-store"
 
 type BroadcastSql = NonNullable<ReturnType<typeof getCloudSaveSql>>
@@ -21,12 +21,13 @@ export function messageFromRow(row: ListenerMessageRow): ListenerMessage {
     readStatus: row.read_status === "ready" ? "ready" : "pending",
     showId: row.show_id,
     showDate: row.show_date,
+    pronoun: isPronoun(row.pronoun) ? row.pronoun : "",
     createdAt: toIso(row.created_at),
     usedAt: row.used_at ? toIso(row.used_at) : null,
   }
 }
 
-const COLUMNS = "id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, created_at, used_at"
+const COLUMNS = "id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, pronoun, created_at, used_at"
 
 export async function listMessages(sql: BroadcastSql, userId: string, options: { name?: string; pending?: boolean; limit?: number } = {}) {
   await ensureListenerMessagesSchema(sql)
@@ -35,7 +36,7 @@ export async function listMessages(sql: BroadcastSql, userId: string, options: {
   if (options.name) {
     const key = listenerNameKeyServer(options.name)
     rows = await sql`
-      SELECT id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, created_at, used_at
+      SELECT id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, pronoun, created_at, used_at
       FROM broadcastos_listener_messages
       WHERE user_id = ${userId} AND name_key = ${key}
       ORDER BY created_at DESC
@@ -43,7 +44,7 @@ export async function listMessages(sql: BroadcastSql, userId: string, options: {
     ` as ListenerMessageRow[]
   } else if (options.pending) {
     rows = await sql`
-      SELECT id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, created_at, used_at
+      SELECT id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, pronoun, created_at, used_at
       FROM broadcastos_listener_messages
       WHERE user_id = ${userId} AND read_status = 'pending'
       ORDER BY created_at DESC
@@ -51,7 +52,7 @@ export async function listMessages(sql: BroadcastSql, userId: string, options: {
     ` as ListenerMessageRow[]
   } else {
     rows = await sql`
-      SELECT id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, created_at, used_at
+      SELECT id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, pronoun, created_at, used_at
       FROM broadcastos_listener_messages
       WHERE user_id = ${userId}
       ORDER BY created_at DESC
@@ -64,7 +65,7 @@ export async function listMessages(sql: BroadcastSql, userId: string, options: {
 export async function findMessage(sql: BroadcastSql, userId: string, id: string) {
   await ensureListenerMessagesSchema(sql)
   const rows = await sql`
-    SELECT id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, created_at, used_at
+    SELECT id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, pronoun, created_at, used_at
     FROM broadcastos_listener_messages
     WHERE id = ${id} AND user_id = ${userId}
     LIMIT 1
@@ -76,15 +77,16 @@ export async function findMessage(sql: BroadcastSql, userId: string, id: string)
 export async function insertMessage(
   sql: BroadcastSql,
   userId: string,
-  input: { name: string; source: string; raw: string; readVersion: string | null; showId: string; showDate: string }
+  input: { name: string; source: string; raw: string; readVersion: string | null; showId: string; showDate: string; pronoun?: string }
 ) {
   await ensureListenerMessagesSchema(sql)
   const name = input.name.replace(/\s+/g, " ").trim()
   const status = input.readVersion ? "ready" : "pending"
+  const pronoun = isPronoun(input.pronoun) ? input.pronoun : ""
   const rows = await sql`
-    INSERT INTO broadcastos_listener_messages (id, user_id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date)
-    VALUES (${crypto.randomUUID()}, ${userId}, ${listenerNameKeyServer(name)}, ${name}, ${input.source}, ${input.raw}, ${input.readVersion}, ${status}, ${input.showId}, ${input.showDate})
-    RETURNING id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, created_at, used_at
+    INSERT INTO broadcastos_listener_messages (id, user_id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, pronoun)
+    VALUES (${crypto.randomUUID()}, ${userId}, ${listenerNameKeyServer(name)}, ${name}, ${input.source}, ${input.raw}, ${input.readVersion}, ${status}, ${input.showId}, ${input.showDate}, ${pronoun})
+    RETURNING id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, pronoun, created_at, used_at
   ` as ListenerMessageRow[]
   const row = rows.at(0)
   return row ? messageFromRow(row) : null
@@ -94,10 +96,11 @@ export async function updateMessage(
   sql: BroadcastSql,
   userId: string,
   id: string,
-  patch: { readVersion?: string; used?: boolean }
+  patch: { readVersion?: string; used?: boolean; pronoun?: string }
 ) {
   await ensureListenerMessagesSchema(sql)
   const readVersion = typeof patch.readVersion === "string" ? patch.readVersion.trim() : null
+  const pronoun = isPronoun(patch.pronoun) ? patch.pronoun : null
   const usedAt = patch.used === true ? new Date().toISOString() : null
   const clearUsed = patch.used === false
   // Every parameter is cast: Postgres cannot infer a type for a bare null in IS NOT NULL or COALESCE.
@@ -106,9 +109,10 @@ export async function updateMessage(
     SET
       read_version = COALESCE(${readVersion}::text, read_version),
       read_status = CASE WHEN ${readVersion}::text IS NOT NULL AND ${readVersion}::text <> '' THEN 'ready' ELSE read_status END,
-      used_at = CASE WHEN ${clearUsed}::boolean THEN NULL ELSE COALESCE(${usedAt}::timestamptz, used_at) END
+      used_at = CASE WHEN ${clearUsed}::boolean THEN NULL ELSE COALESCE(${usedAt}::timestamptz, used_at) END,
+      pronoun = COALESCE(${pronoun}::text, pronoun)
     WHERE id = ${id} AND user_id = ${userId}
-    RETURNING id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, created_at, used_at
+    RETURNING id, name_key, display_name, source, raw, read_version, read_status, show_id, show_date, pronoun, created_at, used_at
   ` as ListenerMessageRow[]
   const row = rows.at(0)
   return row ? messageFromRow(row) : null

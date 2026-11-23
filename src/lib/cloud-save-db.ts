@@ -315,6 +315,7 @@ export type ListenerMessageRow = {
   read_status: string
   show_id: string
   show_date: string
+  pronoun: string | null
   created_at: string | Date
   used_at: string | Date | null
 }
@@ -360,6 +361,8 @@ export async function ensureListenerMessagesSchema(sql: BroadcastSql) {
     CREATE INDEX IF NOT EXISTS broadcastos_listener_messages_name_idx
     ON broadcastos_listener_messages (user_id, name_key, created_at DESC)
   `
+
+  await sql`ALTER TABLE broadcastos_listener_messages ADD COLUMN IF NOT EXISTS pronoun TEXT NOT NULL DEFAULT ''`
 
   await sql`
     CREATE TABLE IF NOT EXISTS broadcastos_checkins (
