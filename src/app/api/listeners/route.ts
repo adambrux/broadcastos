@@ -5,6 +5,7 @@ import {
   type ListenerLogRow,
 } from "@/lib/cloud-save-db"
 import { requireUser } from "@/lib/auth-db"
+import { bumpListenerLog } from "@/lib/listener-log-store"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -153,23 +154,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "A listener name is needed." }, { status: 400 })
   }
 
-  const rows = await sql`
-    INSERT INTO broadcastos_listener_log (id, user_id, name_key, display_name, show_id, show_date, message_count, source_counts)
-    VALUES (${crypto.randomUUID()}, ${userId}, ${nameKey(name)}, ${name}, ${showId}, ${showDate}, 1, jsonb_build_object(${source}::text, 1))
-    ON CONFLICT (user_id, name_key, show_id, show_date)
-    DO UPDATE SET
-      message_count = GREATEST(1, broadcastos_listener_log.message_count + ${delta}),
-      source_counts = jsonb_set(
-        broadcastos_listener_log.source_counts,
-        ARRAY[${source}::text],
-        to_jsonb(GREATEST(0, COALESCE((broadcastos_listener_log.source_counts->>${source})::int, 0) + ${delta}))
-      ),
-      display_name = ${name},
-      updated_at = NOW()
-    RETURNING id, name_key, display_name, show_id, show_date, message_count, source_counts, created_at, updated_at
-  ` as ListenerLogRow[]
-
-  const saved = rows.at(0)
+  // The same upsert a banked message uses (v2.41): one library, one count.
+  const saved = await bumpListenerLog(sql, userId, { name, showId, showDate, source, delta })
   return Response.json({ entry: saved ? entryFromRow(saved) : null, status: cloudSaveStatus() })
 }
 

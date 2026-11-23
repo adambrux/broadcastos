@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import {
+  MessageSquareText,
   Inbox,
   ArrowDown,
   ArrowUp,
@@ -30,6 +31,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { StudioAmbient } from "@/components/studio-motion"
+import { ListenerMessagesPanel } from "@/components/listener-messages"
 import { ParkedPocketPanel } from "@/components/parked-pocket"
 import { ProducerLineBadge } from "@/components/producer-line-badge"
 import type { ParkedNote } from "@/lib/parked-notes-shared"
@@ -389,13 +391,17 @@ export function UsableProducerDesk() {
     setSelectedId("")
   }
 
-  /** From the Pocket: a parked message goes to the end of the selected link's Moment, marked so it reads as a message. */
-  function dropNoteIntoSelected(note: ParkedNote) {
+  /** A message goes to the end of the selected link's Moment, marked so it reads as a message. */
+  function dropTextIntoSelected(text: string, from: string, label: string) {
     if (!selected) return
     const base = selected.script.trimEnd()
-    const from = note.sender ? ` from ${note.sender}` : ""
-    updateItem(selected.id, "script", `${base}${base ? "\n\n" : ""}[FROM THE POCKET${from}] ${note.text}`)
-    setNotice(`Parked message added to "${selected.title}".`)
+    const who = from ? ` from ${from}` : ""
+    updateItem(selected.id, "script", `${base}${base ? "\n\n" : ""}[${label}${who}] ${text}`)
+    setNotice(`Added to "${selected.title}".`)
+  }
+
+  function dropNoteIntoSelected(note: ParkedNote) {
+    dropTextIntoSelected(note.text, note.sender, "FROM THE POCKET")
   }
 
   function updateItem(id: string, key: keyof StudioItem, value: string | boolean) {
@@ -625,6 +631,22 @@ export function UsableProducerDesk() {
                 Save the current running order online, or refresh after saving from another device.
               </div>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="studio-card-lift overflow-hidden rounded-[24px] py-0 shadow-card">
+        <CardContent className="p-5 sm:p-6">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]">
+            <div>
+              <Badge className="bg-ink text-white"><MessageSquareText />Messages</Badge>
+              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">Paste it, bank it, read it as them.</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Paste a WhatsApp worth airing and name the person. The app writes the read in the third person, their own words kept where the line is good, and saves the message against them. Put the read straight into the selected link, pocket it for later, or copy it.
+              </p>
+              {selected && <p className="mt-3 text-xs font-semibold text-brand-indigo">Selected link: {selected.title}</p>}
+            </div>
+            <ListenerMessagesPanel showId={workspace.showId} showDate={workspace.date || new Date().toISOString().slice(0, 10)} onDropIntoLink={(text, from) => dropTextIntoSelected(text, from, "MESSAGE")} />
           </div>
         </CardContent>
       </Card>

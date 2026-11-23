@@ -2,6 +2,15 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.41 · Sam says · 23 November 2026
+
+- The message bank. Paste a WhatsApp worth airing, name the person, press Bank it: the app writes the on-air read in the third person ("Sam says she's been low this week, but the show's been getting her through"), keeping the person's own words where the line is good and cutting the rest. The message is saved against them, and hearing from them moves their "last heard" too. On Air has a Messages button beside the Pocket; the Producer Desk has a Messages card with Put in this link.
+- Every read can be copied, pocketed for later, edited, ticked Used, or put back. The original is one tap away under it.
+- The read is written by Claude on the server and needs ANTHROPIC_API_KEY set on the deployment. Until it is, messages still bank and the read can be written in the box, or by the producer through the inbox (GET and POST /api/inbox/messages).
+- Insights: each regular's profile now shows everything they have sent, read versions first.
+- The missing list writes the check-in for you. Every quiet name has Write the check-in: "Hey Sam, it's Adam from Afternoons with Adam, just checking in, haven't heard from you for a while, hope you're okay. Let me know if there's a song I can play for you." The wording is built from parts and the same person never gets the same one twice; it signs from the show they mostly message, or Premier Gospel when it is mixed. Edit it if you like, then Copy and mark sent records it and rests the clock.
+- The name log's upsert moved into a shared library so a banked message counts the same as one logged On Air.
+
 ## v2.40 · In the pocket · 23 November 2026
 
 - The Pocket: mid-show, a WhatsApp or a thought that belongs later can be parked in two taps without touching the script. On Air has a Pocket button next to Flag and Edit; it opens a side sheet with a paste box, where it came from (WhatsApp, Text, Instagram, Email, Idea), who sent it, and Later today or Another day. Parked notes show on this device straight away, save online to the account, and wait in a queue if the iPad is offline or signed out.

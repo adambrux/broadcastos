@@ -305,6 +305,82 @@ export async function ensureParkedNotesSchema(sql: BroadcastSql) {
   parkedNotesSchemaReady = true
 }
 
+export type ListenerMessageRow = {
+  id: string
+  name_key: string
+  display_name: string
+  source: string
+  raw: string
+  read_version: string | null
+  read_status: string
+  show_id: string
+  show_date: string
+  created_at: string | Date
+  used_at: string | Date | null
+}
+
+export type CheckinRow = {
+  id: string
+  name_key: string
+  variant: string
+  text: string
+  show_label: string
+  sent_at: string | Date
+}
+
+let listenerMessagesSchemaReady = false
+
+/** THE MESSAGE BANK (v2.41): pasted listener messages with their on-air read versions, and the check-ins sent. */
+export async function ensureListenerMessagesSchema(sql: BroadcastSql) {
+  if (listenerMessagesSchemaReady) return
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS broadcastos_listener_messages (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name_key TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'whatsapp',
+      raw TEXT NOT NULL,
+      read_version TEXT,
+      read_status TEXT NOT NULL DEFAULT 'pending',
+      show_id TEXT NOT NULL DEFAULT '',
+      show_date TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      used_at TIMESTAMPTZ
+    )
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS broadcastos_listener_messages_user_idx
+    ON broadcastos_listener_messages (user_id, created_at DESC)
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS broadcastos_listener_messages_name_idx
+    ON broadcastos_listener_messages (user_id, name_key, created_at DESC)
+  `
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS broadcastos_checkins (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name_key TEXT NOT NULL,
+      variant TEXT NOT NULL,
+      text TEXT NOT NULL,
+      show_label TEXT NOT NULL DEFAULT '',
+      sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS broadcastos_checkins_name_idx
+    ON broadcastos_checkins (user_id, name_key, sent_at DESC)
+  `
+
+  listenerMessagesSchemaReady = true
+}
+
 export async function ensureListenerLogSchema(sql: BroadcastSql) {
   await sql`
     CREATE TABLE IF NOT EXISTS broadcastos_listener_log (

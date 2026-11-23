@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input"
 import { StudioLivePill } from "@/components/app-shell"
 import { openAppSplash } from "@/components/app-splash-screen"
 import { GameScoreboard } from "@/components/game-scoreboard"
+import { ListenerMessagesButton } from "@/components/listener-messages"
 import { ParkedPocketButton } from "@/components/parked-pocket"
 import { ProducerLineBadge } from "@/components/producer-line-badge"
 import { LaunchSequenceBody, LaunchSequenceIndicator } from "@/components/show-launch-sequence"
@@ -755,6 +756,7 @@ export function UsableOnAir() {
                       ))}
                     </div>
                   )}
+                  {!editing && <ListenerMessagesButton showId={workspace.showId} showDate={showDate} />}
                   {!editing && <ParkedPocketButton showId={workspace.showId} showDate={showDate} />}
                   {prompter === "off" && !editing && (
                     <>
