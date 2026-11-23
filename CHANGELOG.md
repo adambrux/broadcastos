@@ -2,6 +2,10 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.42 · Producer paste · 23 November 2026
+
+- The producer can bank a message too: POST /api/inbox/messages with a name and the text banks it in Adam's account and writes the read version, exactly as the app does, and DELETE removes one. So a WhatsApp forwarded to the producer lands in the same bank, and the message bank can be tested end to end without a sign-in.
+
 ## v2.41 · Sam says · 23 November 2026
 
 - The message bank. Paste a WhatsApp worth airing, name the person, press Bank it: the app writes the on-air read in the third person ("Sam says she's been low this week, but the show's been getting her through"), keeping the person's own words where the line is good and cutting the rest. The message is saved against them, and hearing from them moves their "last heard" too. On Air has a Messages button beside the Pocket; the Producer Desk has a Messages card with Put in this link.

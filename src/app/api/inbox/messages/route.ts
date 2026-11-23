@@ -1,16 +1,23 @@
 import { getCloudSaveSql } from "@/lib/cloud-save-db"
 import { inboxRefusal, resolveInboxUser } from "@/lib/inbox-auth"
-import { listMessages, updateMessage } from "@/lib/listener-messages-store"
-import { readVersionConfigured } from "@/lib/read-version"
+import { bumpListenerLog } from "@/lib/listener-log-store"
+import { isMessageSource } from "@/lib/listener-messages-shared"
+import { deleteMessage, insertMessage, listMessages, updateMessage } from "@/lib/listener-messages-store"
+import { readVersionConfigured, writeReadVersion } from "@/lib/read-version"
+import { showDisplayNameFor } from "@/lib/show-session-store"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 /**
- * The producer's side of the message bank (v2.41). GET: messages still waiting
- * for a read version (?pending=1, the default) or the recent bank (?recent=1).
- * POST {id, readVersion}: fills a read version in, the way the app would have.
+ * The producer's side of the message bank (v2.41, v2.42). GET: messages still
+ * waiting for a read version (?pending=1, the default), the recent bank
+ * (?recent=1) or one person (?name=). POST {id, readVersion}: fills a read
+ * version in. POST {name, raw, source?, showId?, showDate?}: banks a message
+ * from the producer's side and writes its read, the way the app does.
+ * DELETE ?id=: removes one (a test message, a paste by mistake).
  */
+export const maxDuration = 60
 export async function GET(request: Request) {
   const sql = getCloudSaveSql()
   if (!sql) return Response.json({ error: "Database is not configured" }, { status: 503 })
@@ -38,12 +45,53 @@ export async function POST(request: Request) {
   const owner = await resolveInboxUser(sql).catch(() => null)
   if (!owner) return Response.json({ error: "There is no account for the inbox to write to yet." }, { status: 503 })
 
-  const body = (await request.json().catch(() => null)) as { id?: unknown; readVersion?: unknown } | null
+  const body = (await request.json().catch(() => null)) as { id?: unknown; readVersion?: unknown; name?: unknown; raw?: unknown; source?: unknown; showId?: unknown; showDate?: unknown } | null
   const id = typeof body?.id === "string" ? body.id.trim() : ""
   const readVersion = typeof body?.readVersion === "string" ? body.readVersion.trim() : ""
-  if (!id || !readVersion) return Response.json({ error: "Send the message id and the read version." }, { status: 400 })
 
-  const message = await updateMessage(sql, owner.id, id, { readVersion })
-  if (!message) return Response.json({ error: "No message with that id." }, { status: 404 })
-  return Response.json({ message })
+  if (id) {
+    if (!readVersion) return Response.json({ error: "Send the message id and the read version." }, { status: 400 })
+    const message = await updateMessage(sql, owner.id, id, { readVersion })
+    if (!message) return Response.json({ error: "No message with that id." }, { status: 404 })
+    return Response.json({ message })
+  }
+
+  // A new message from the producer's side: bank it and write the read, exactly as the app does.
+  const name = typeof body?.name === "string" ? body.name.replace(/\s+/g, " ").trim().slice(0, 120) : ""
+  const raw = typeof body?.raw === "string" ? body.raw.trim().slice(0, 6000) : ""
+  if (!name || !raw) return Response.json({ error: "Send the name and the message (or an id with a read version)." }, { status: 400 })
+  const source = isMessageSource(body?.source) ? body.source : "whatsapp"
+  const showId = typeof body?.showId === "string" && body.showId ? body.showId.slice(0, 40) : "afternoons"
+  const showDate = typeof body?.showDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.showDate) ? body.showDate : new Date().toISOString().slice(0, 10)
+
+  let written: string | null = null
+  let readError: string | null = null
+  if (readVersionConfigured()) {
+    try {
+      written = await writeReadVersion({ name, raw, showName: showDisplayNameFor(showId) })
+    } catch (error) {
+      readError = error instanceof Error ? error.message : "unknown error"
+      console.error("inbox messages: read version failed", error)
+    }
+  }
+  const message = await insertMessage(sql, owner.id, { name, source, raw, readVersion: written, showId, showDate })
+  if (!message) return Response.json({ error: "The message did not save." }, { status: 500 })
+  await bumpListenerLog(sql, owner.id, { name, showId, showDate, source }).catch((error) => console.error("inbox messages: name log bump failed", error))
+  return Response.json({ message, ai: readVersionConfigured(), readError })
+}
+
+export async function DELETE(request: Request) {
+  const sql = getCloudSaveSql()
+  if (!sql) return Response.json({ error: "Database is not configured" }, { status: 503 })
+
+  const refusal = inboxRefusal(request)
+  if (refusal) return refusal
+
+  const owner = await resolveInboxUser(sql).catch(() => null)
+  if (!owner) return Response.json({ error: "There is no account for the inbox to write to yet." }, { status: 503 })
+
+  const id = new URL(request.url).searchParams.get("id")?.trim() ?? ""
+  if (!id) return Response.json({ error: "Which message?" }, { status: 400 })
+  await deleteMessage(sql, owner.id, id)
+  return Response.json({ ok: true })
 }
