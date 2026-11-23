@@ -2,6 +2,13 @@
 
 Every push bumps the minor version. Adam decides when a major version lands.
 
+## v2.39 · Straight in · 23 November 2026
+
+- A finished show plan can now be sent straight into BroadcastOS from the producer's machine, with no pasting. The new inbox (POST /api/inbox/show-plan) takes the same plain text the Import Centre reads, runs it through the same parser, saves it as a show in Saved Shows and archives it to the Presenter Hub with the liner reads counted, exactly as Save online does.
+- The inbox is switched on by one server setting, BROADCASTOS_INBOX_TOKEN, and the sender has to carry that token. The show lands in the owner's account (or the account named by BROADCASTOS_INBOX_USER_EMAIL). One saved show per show per day, so a corrected plan sent again replaces the earlier one instead of piling up.
+- A dry run (dryRun: true) parses the plan and reports links, hours, promo and warnings without saving anything.
+- Save online and the inbox now share one save-and-archive library, so a show saved either way is identical on the studio iPad.
+
 ## v2.38 · What's playing · 30 October 2026
 
 - Every link can now carry two music lines: Just played (the song you're coming out of, for the back-announce) and Next songs (the one or two going out of this link, in order, with lengths). On Air shows them in their own green strip at the top of the link, so what just played and what's coming next is never a guess, even when the log changed at the last minute.

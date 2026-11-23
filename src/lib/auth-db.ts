@@ -175,6 +175,23 @@ export async function findUserByEmail(sql: BroadcastSql, email: string) {
   return row ? { user: userFromRow(row), passwordHash: row.password_hash } : null
 }
 
+/**
+ * The account the inbox saves into (v2.39): the owner, unless
+ * BROADCASTOS_INBOX_USER_EMAIL names another account.
+ */
+export async function findOwnerUser(sql: BroadcastSql): Promise<AppUser | null> {
+  await ensureAuthSchema(sql)
+  const rows = await sql`
+    SELECT id, email, display_name, role, disabled, password_hash, show_name, arcade_enabled
+    FROM broadcastos_users
+    WHERE role = 'owner' AND disabled = FALSE
+    ORDER BY created_at ASC
+    LIMIT 1
+  ` as UserRow[]
+  const row = rows.at(0)
+  return row ? userFromRow(row) : null
+}
+
 export async function createUser(
   sql: BroadcastSql,
   input: { email: string; displayName: string; password: string; role: "owner" | "presenter"; showName?: string; arcadeEnabled?: boolean }
